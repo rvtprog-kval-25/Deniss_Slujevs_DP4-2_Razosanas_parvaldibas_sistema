@@ -1,552 +1,350 @@
 <template>
-  <div class="grid md:grid-cols-[220px_1fr]">
-    <!-- Боковая панель навигации -->
-    <aside class="hidden md:block border-r bg-white h-[calc(100vh-4rem)]">
-      <div class="flex flex-col gap-1 p-4">
-        <button 
-          @click="currentTab = 'workers'" 
-          :class="[
-            'flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors',
-            currentTab === 'workers' 
-              ? 'bg-gray-100 text-gray-900 font-medium' 
-              : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-          ]"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-          </svg>
-          Darbinieki
-        </button>
-      </div>
-    </aside>
+  <div class="min-h-screen bg-gray-50">
+    <div class="grid md:grid-cols-[220px_1fr]">
+      <!-- Sānu navigācijas josla -->
+      <aside class="hidden md:block border-r bg-white h-[calc(100vh-4rem)]">
+        <div class="flex flex-col gap-1 p-4">
+          <button 
+            @click="currentTab = 'orders'" 
+            :class="[ 
+              'flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors', 
+              currentTab === 'orders' 
+                ? 'bg-gray-100 text-gray-900 font-medium' 
+                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50' 
+            ]"
+          >
+            Pasūtījumi
+          </button>
+          <button 
+            @click="currentTab = 'materials'" 
+            :class="[ 
+              'flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors', 
+              currentTab === 'materials' 
+                ? 'bg-gray-100 text-gray-900 font-medium' 
+                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50' 
+            ]"
+          >
+            Materiāli
+          </button>
+          <button 
+            @click="currentTab = 'workers'" 
+            :class="[ 
+              'flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors', 
+              currentTab === 'workers' 
+                ? 'bg-gray-100 text-gray-900 font-medium' 
+                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50' 
+            ]"
+          >
+            Darbinieki
+          </button>
+        </div>
+      </aside>
 
-    <!-- Основной контент -->
-    <main class="p-4 md:p-6">
-      <!-- Кнопка добавления -->
-      <div class="flex justify-between items-center mb-4">
-        <h1 class="text-xl font-semibold">Darbinieki</h1>
-        <button 
-          @click="openAddDialog()" 
-          class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 bg-blue-600 text-white"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 h-4 w-4">
-            <path d="M5 12h14"></path>
-            <path d="M12 5v14"></path>
-          </svg>
-          Pievienot darbinieku
-        </button>
-      </div>
+      <!-- Galvenais saturs -->
+      <main class="p-4 md:p-6">
+        <!-- Mobilā navigācija (redzama tikai mobilajās ierīcēs) -->
+        <div class="md:hidden mb-4">
+          <div class="inline-flex h-10 items-center justify-center rounded-md bg-white p-1 text-gray-600 shadow-sm border">
+            <button 
+              @click="currentTab = 'orders'" 
+              :class="[ 
+                'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50', 
+                currentTab === 'orders' ? 'bg-gray-100 text-gray-900' : 'text-gray-500' 
+              ]"
+            >
+              Pasūtījumi
+            </button>
+            <button 
+              @click="currentTab = 'materials'" 
+              :class="[ 
+                'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50', 
+                currentTab === 'materials' ? 'bg-gray-100 text-gray-900' : 'text-gray-500' 
+              ]"
+            >
+              Materiāli
+            </button>
+            <button 
+              @click="currentTab = 'workers'" 
+              :class="[ 
+                'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50', 
+                currentTab === 'workers' ? 'bg-gray-100 text-gray-900' : 'text-gray-500' 
+              ]"
+            >
+              Darbinieki
+            </button>
+          </div>
+        </div>
 
-      <!-- Таблица работников -->
-      <div class="bg-white rounded-md border shadow-sm">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
+        <!-- Pievienošanas poga -->
+        <div class="flex justify-between items-center mb-4">
+          <h1 class="text-xl font-semibold">
+            {{ currentTab === 'orders' ? 'Pasūtījumi' : currentTab === 'materials' ? 'Materiāli' : 'Darbinieki' }}
+          </h1>
+          <button 
+            @click="openAddDialog" 
+            class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 bg-blue-600 text-white"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 h-4 w-4">
+              <path d="M5 12h14"></path>
+              <path d="M12 5v14"></path>
+            </svg>
+            Pievienot {{ currentTab === 'orders' ? 'pasūtījumu' : currentTab === 'materials' ? 'materiālu' : 'darbinieku' }}
+          </button>
+        </div>
+
+        <!-- Tabulas katram datu tipam -->
+        <div v-if="currentTab === 'orders'">
+          <table class="min-w-full table-auto border-collapse">
             <thead>
-              <tr class="border-b bg-gray-50">
-                <th class="h-12 px-4 text-left align-middle font-medium text-gray-500">#</th>
-                <th class="h-12 px-4 text-left align-middle font-medium text-gray-500">Vārds</th>
-                <th class="h-12 px-4 text-left align-middle font-medium text-gray-500">Amats</th>
-                <th class="h-12 px-4 text-left align-middle font-medium text-gray-500">Kods</th>
-                <th class="h-12 px-4 text-left align-middle font-medium text-gray-500">Status</th>
-                <th class="h-12 px-4 text-right align-middle font-medium text-gray-500">Darbības</th>
+              <tr class="border-b">
+                <th class="px-4 py-2 text-left">ID</th>
+                <th class="px-4 py-2 text-left">Nosaukums</th>
+                <th class="px-4 py-2 text-left">Daudzums</th>
+                <th class="px-4 py-2 text-left">Statuss</th>
+                <th class="px-4 py-2 text-left">Darbības</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(worker, index) in workers" :key="worker._id" class="border-b">
-                <td class="p-4 align-middle font-medium">{{ index + 1 }}</td>
-                <td class="p-4 align-middle">{{ `${worker.vards} ${worker.uzvards}` }}</td>
-                <td class="p-4 align-middle">{{ worker.amats }}</td>
-                <td class="p-4 align-middle">{{ worker.kods }}</td>
-                <td class="p-4 align-middle">
-                  <span 
-                    :class="[
-                      'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
-                      worker.status === 'Strādā' ? 'bg-green-100 text-green-800' :
-                      worker.status === 'Atvaļinājumā' ? 'bg-blue-100 text-blue-800' :
-                      'bg-red-100 text-red-800'
-                    ]"
-                  >
-                    {{ worker.status }}
-                  </span>
-                </td>
-                <td class="p-4 align-middle text-right relative">
+              <tr v-for="order in orders" :key="order.id" class="border-b">
+                <td class="px-4 py-2">{{ order.id }}</td>
+                <td class="px-4 py-2">{{ order.nosaukums }}</td>
+                <td class="px-4 py-2">{{ order.daudzums }}</td>
+                <td class="px-4 py-2">{{ order.status }}</td>
+                <td class="px-4 py-2">
                   <button 
-                    @click="toggleDropdown(worker._id, $event)" 
-                    class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10 p-0"
+                    @click="viewOrderDetails(order)" 
+                    class="text-blue-500 hover:underline"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
-                      <circle cx="12" cy="12" r="1"></circle>
-                      <circle cx="12" cy="5" r="1"></circle>
-                      <circle cx="12" cy="19" r="1"></circle>
-                    </svg>
+                    Skatīt
                   </button>
-                  <div 
-                    v-if="activeDropdown === worker._id" 
-                    class="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
-                    :data-dropdown="worker._id"
+                  <button 
+                    @click="deleteOrder(order.id)" 
+                    class="text-red-500 hover:underline ml-2"
                   >
-                    <div class="py-1">
-                      <button @click="openEditDialog(worker)" class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 h-4 w-4">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                        Rediģēt
-                      </button>
-                      <button @click="openDeleteDialog(worker)" class="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 h-4 w-4">
-                          <path d="M3 6h18"></path>
-                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                        </svg>
-                        Izdzēst
-                      </button>
-                    </div>
-                  </div>
+                    Dzēst
+                  </button>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-      </div>
 
-      <!-- Модальное окно добавления -->
-      <div v-if="showAddDialog" class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
-          <div class="p-6">
-            <h3 class="text-lg font-semibold mb-4">Pievienot darbinieku</h3>
-            <div class="space-y-4">
-              <div>
-                <label class="text-sm font-medium block mb-2">Vārds</label>
-                <input 
-                  v-model="formData.vards" 
-                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Vārds"
-                />
-              </div>
-              <div>
-                <label class="text-sm font-medium block mb-2">Uzvārds</label>
-                <input 
-                  v-model="formData.uzvards" 
-                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Uzvārds"
-                />
-              </div>
-              <div>
-                <label class="text-sm font-medium block mb-2">Amats</label>
-                <select 
-                  v-model="formData.amats" 
-                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">Izvelies amatu</option>
-                  <option value="Galdnieks">Galdnieks</option>
-                  <option value="Tapsētājs">Tapsētājs</option>
-                  <option value="Šuvejs/a">Šuvejs/a</option>
-                  <option value="Komplektetājs">Komplektetājs</option>
-                  <option value="Menedzeris">Menedzeris</option>
-                  <option value="Administrators">Administrators</option>
-                </select>
-              </div>
-              <div>
-                <label class="text-sm font-medium block mb-2">Кods</label>
-                <input 
-                  v-model="formData.kods" 
-                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Ievadiet kodu"
-                />
-              </div>
-              <div>
-                <label class="text-sm font-medium block mb-2">Status</label>
-                <select 
-                  v-model="formData.status" 
-                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="Strādā">Strādā</option>
-                  <option value="Atvaļinājumā">Atvaļinājumā</option>
-                  <option value="Atlaists">Atlaists</option>
-                </select>
-              </div>
-            </div>
-            <div class="flex justify-end gap-2 mt-6">
-              <button 
-                @click="closeDialog()" 
-                class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
-              >
-                Atcelt
-              </button>
-              <button 
-                @click="addItem()" 
-                class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 bg-blue-600 text-white"
-              >
-                Saglabāt
-              </button>
-            </div>
-          </div>
+        <div v-if="currentTab === 'materials'">
+          <table class="min-w-full table-auto border-collapse">
+            <thead>
+              <tr class="border-b">
+                <th class="px-4 py-2 text-left">ID</th>
+                <th class="px-4 py-2 text-left">Materiāla nosaukums</th>
+                <th class="px-4 py-2 text-left">Daudzums</th>
+                <th class="px-4 py-2 text-left">Vienība</th>
+                <th class="px-4 py-2 text-left">Noliktava</th>
+                <th class="px-4 py-2 text-left">Vieta</th>
+                <th class="px-4 py-2 text-left">Darbības</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="material in materials" :key="material.id" class="border-b">
+                <td class="px-4 py-2">{{ material.id }}</td>
+                <td class="px-4 py-2">{{ material.nosaukums }}</td>
+                <td class="px-4 py-2">{{ material.daudzums }}</td>
+                <td class="px-4 py-2">{{ material.vieniba }}</td>
+                <td class="px-4 py-2">{{ material.noliktava }}</td>
+                <td class="px-4 py-2">{{ material.vieta }}</td>
+                <td class="px-4 py-2">
+                  <button 
+                    @click="deleteMaterial(material.id)" 
+                    class="text-red-500 hover:underline"
+                  >
+                    Dzēst
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </div>
 
-      <!-- Модальное окно редактирования -->
-      <div v-if="showEditDialog" class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
-          <div class="p-6">
-            <h3 class="text-lg font-semibold mb-4">Rediģēt darbinieku</h3>
-            <div class="space-y-4">
-              <div>
-                <label class="text-sm font-medium block mb-2">Vārds</label>
-                <input 
-                  v-model="formData.vards" 
-                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Vārds"
-                />
-              </div>
-              <div>
-                <label class="text-sm font-medium block mb-2">Uzvārds</label>
-                <input 
-                  v-model="formData.uzvards" 
-                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Uzvārds"
-                />
-              </div>
-              <div>
-                <label class="text-sm font-medium block mb-2">Amats</label>
-                <select 
-                  v-model="formData.amats" 
-                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                <option value="">Izvelies amatu</option>
-                  <option value="Galdnieks">Galdnieks</option>
-                  <option value="Tapsētājs">Tapsētājs</option>
-                  <option value="Šuvejs/a">Šuvejs/a</option>
-                  <option value="Komplektetājs">Komplektetājs</option>
-                  <option value="Menedzeris">Menedzeris</option>
-                  <option value="Administrators">Administrators</option>
-                </select>
-              </div>
-              <div>
-                <label class="text-sm font-medium block mb-2">Kods</label>
-                <input 
-                  v-model="formData.kods" 
-                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Введите код"
-                />
-              </div>
-              <div>
-                <label class="text-sm font-medium block mb-2">Status</label>
-                <select 
-                  v-model="formData.status" 
-                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="Strādā">Strādā</option>
-                  <option value="Atvaļinājumā">Atvaļinājumā</option>
-                  <option value="Atlaists">Atlaists</option>
-                </select>
-              </div>
-            </div>
-            <div class="flex justify-end gap-2 mt-6">
-              <button 
-                @click="closeDialog()" 
-                class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
-              >
-                Atcelt
-              </button>
-              <button 
-                @click="updateItem()" 
-                class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 bg-blue-600 text-white"
-              >
-                Saglabāt
-              </button>
-            </div>
-          </div>
+        <div v-if="currentTab === 'workers'">
+          <table class="min-w-full table-auto border-collapse">
+            <thead>
+              <tr class="border-b">
+                <th class="px-4 py-2 text-left">ID</th>
+                <th class="px-4 py-2 text-left">Vārds</th>
+                <th class="px-4 py-2 text-left">Uzārds</th>
+                <th class="px-4 py-2 text-left">Amats</th>
+                <th class="px-4 py-2 text-left">Darbības</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="employee in employees" :key="employee.id" class="border-b">
+                <td class="px-4 py-2">{{ employee.id }}</td>
+                <td class="px-4 py-2">{{ employee.vards }}</td>
+                <td class="px-4 py-2">{{ employee.uzvards }}</td>
+                <td class="px-4 py-2">{{ employee.amats }}</td>
+                <td class="px-4 py-2">
+                  <button 
+                    @click="deleteEmployee(employee.id)" 
+                    class="text-red-500 hover:underline"
+                  >
+                    Dzēst
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </div>
-
-      <!-- Модальное окно удаления -->
-      <div v-if="showDeleteDialog" class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
-          <div class="p-6">
-            <h3 class="text-lg font-semibold mb-2">Izdzēšana</h3>
-            <p class="text-gray-500 mb-6">
-              Vai tiešām gribat izdzēst?
-            </p>
-            <div class="flex justify-end gap-2">
-              <button 
-                @click="closeDialog()" 
-                class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
-              >
-                Atcelt
-              </button>
-              <button 
-                @click="deleteItem()" 
-                class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2 bg-red-600 text-white"
-              >
-                Izdzēst
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </main>
+      </main>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
+import axios from 'axios';
 
-const API_URL = 'http://localhost:5000'; // Адрес Flask API
+// Состояния для данных
+const currentTab = ref('orders');
+const orders = ref([]);
+const materials = ref([]);
+const employees = ref([]);
 
-// Текущая вкладка
-const currentTab = ref('workers');
-
-// Данные для таблицы
-const workers = ref([]);
-
-// Состояние диалоговых окон
+// Состояния для формы добавления
+const newOrder = ref({ nosaukums: '', daudzums: '', status: '' });
+const newMaterial = ref({ nosaukums: '', daudzums: '', vieniba: '', noliktava: '', vieta: '' });
+const newEmployee = ref({ vards: '', uzvards: '', amats: '' });
 const showAddDialog = ref(false);
-const showEditDialog = ref(false);
-const showDeleteDialog = ref(false);
 
-const activeDropdown = ref(null);
-const editingItem = ref(null);
-
-// Сообщение об успешной операции или ошибке
-const message = ref('');
-const showMessage = ref(false);
-
-// Данные формы
-const formData = reactive({
-  id: null,
-  vards: '',
-  uzvards: '',
-  amats: '',
-  kods: '', // Поле "Код"
-  status: ''
-});
-
-// Проверка токена
-const checkToken = () => {
-  const token = localStorage.getItem('authToken');
-  if (!token) {
-    alert('Jāieeiet sistēmā');
-    return false;
-  }
-  return true;
-};
-
-// Методы
-const toggleDropdown = (id, event) => {
-  if (activeDropdown.value === id) {
-    activeDropdown.value = null;
-  } else {
-    activeDropdown.value = id;
-
-    // Проверяем положение меню
-    const dropdownMenu = document.querySelector(`[data-dropdown="${id}"]`);
-    if (dropdownMenu) {
-      const rect = event.target.getBoundingClientRect();
-      const windowHeight = window.innerHeight;
-
-      // Если меню выходит за пределы экрана, показываем его сверху
-      if (rect.bottom + dropdownMenu.offsetHeight > windowHeight) {
-        dropdownMenu.style.top = `-${dropdownMenu.offsetHeight + 10}px`;
-      } else {
-        dropdownMenu.style.top = `${event.target.offsetHeight + 5}px`;
-      }
-
-      // Устанавливаем позицию по горизонтали
-      dropdownMenu.style.left = `0px`;
-    }
+// Функции для получения данных
+const fetchOrders = async () => {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await axios.get('http://127.0.0.1:5000/orders', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    orders.value = response.data;
+  } catch (error) {
+    console.error('Error fetching orders:', error);
   }
 };
 
-const openAddDialog = () => {
-  if (!checkToken()) return; // Проверка токена
-  Object.keys(formData).forEach(key => {
-    formData[key] = '';
-  });
-  formData.status = 'Srādā';
-  showAddDialog.value = true;
-  activeDropdown.value = null;
+const fetchMaterials = async () => {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await axios.get('http://127.0.0.1:5000/materials', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    materials.value = response.data.materials;
+  } catch (error) {
+    console.error('Error fetching materials:', error);
+  }
 };
 
-const openEditDialog = (item) => {
-  if (!checkToken()) return; // Проверка токена
-  editingItem.value = item;
-  Object.keys(item).forEach(key => {
-    if (key in formData) {
-      formData[key] = item[key];
-    }
-  });
-  showEditDialog.value = true;
-  activeDropdown.value = null;
-};
-
-const openDeleteDialog = (item) => {
-  if (!checkToken()) return; // Проверка токена
-  editingItem.value = item;
-  showDeleteDialog.value = true;
-  activeDropdown.value = null;
-};
-
-const closeDialog = () => {
-  showAddDialog.value = false;
-  showEditDialog.value = false;
-  showDeleteDialog.value = false;
-  editingItem.value = null;
-};
-
-// Загрузка данных работников
 const fetchWorkers = async () => {
-  if (!checkToken()) return; // Проверка токена
   try {
     const token = localStorage.getItem('authToken');
-    const response = await fetch(`${API_URL}/employees`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+    const response = await axios.get('http://127.0.0.1:5000/employees', {
+      headers: { Authorization: `Bearer ${token}` },
     });
-
-    if (!response.ok) {
-      throw new Error(`Kļūda ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    workers.value = data.map((worker, index) => ({ ...worker, id: index + 1 }));
+    employees.value = response.data.employees;
   } catch (error) {
-    console.error('Kļūda', error);
-    showMessage.value = true;
-    message.value = 'Kļūda';
-    setTimeout(() => (showMessage.value = false), 3000); // Скрыть сообщение через 3 секунды
+    console.error('Error fetching employees:', error);
   }
 };
 
-// Добавление работника
-const addItem = async () => {
-  if (!checkToken()) return; // Проверка токена
+// Функции для добавления данных
+const addOrder = async () => {
   try {
-    // Проверяем обязательные поля
-    if (!formData.vards || !formData.uzvards || !formData.amats) {
-      showMessage.value = true;
-      message.value = 'Aizpildiet visus laukus';
-      setTimeout(() => (showMessage.value = false), 3000);
-      return;
-    }
-
     const token = localStorage.getItem('authToken');
-    const response = await fetch(`${API_URL}/employees`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        vards: formData.vards,
-        uzvards: formData.uzvards,
-        amats: formData.amats,
-        kods: formData.kods, 
-        status: formData.status
-      })
+    const response = await axios.post('http://127.0.0.1:5000/orders', newOrder.value, {
+      headers: { Authorization: `Bearer ${token}` },
     });
-
-    if (!response.ok) {
-      throw new Error(`Kļūda ${response.statusText}`);
-    }
-
-    await fetchWorkers();
-    closeDialog();
-    showMessage.value = true;
-    message.value = 'Veiksmīgi pievienots';
-    setTimeout(() => (showMessage.value = false), 3000); 
+    orders.value.push(response.data);
+    newOrder.value = { nosaukums: '', daudzums: '', status: '' };  // очистить форму
+    showAddDialog.value = false;  // закрыть диалог
   } catch (error) {
-    console.error('Kļūda', error);
-    showMessage.value = true;
-    message.value = 'Neizdeevas pievienot';
-    setTimeout(() => (showMessage.value = false), 3000); // Скрыть сообщение через 3 секунды
+    console.error('Error adding order:', error);
   }
 };
 
-// Обновление работника
-const updateItem = async () => {
-  if (!checkToken()) return; // Проверка токена
+const addMaterial = async () => {
   try {
-    if (!editingItem.value) return;
-
-    // Проверяем обязательные поля
-    if (!formData.vards || !formData.uzvards || !formData.amats) {
-      showMessage.value = true;
-      message.value = 'Aizpildiet visus laukus';
-      setTimeout(() => (showMessage.value = false), 3000);
-      return;
-    }
-
     const token = localStorage.getItem('authToken');
-    const response = await fetch(`${API_URL}/employees/${editingItem.value._id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        vards: formData.vards,
-        uzvards: formData.uzvards,
-        amats: formData.amats,
-        kods: formData.kods, 
-        status: formData.status
-      })
+    const response = await axios.post('http://127.0.0.1:5000/materials', newMaterial.value, {
+      headers: { Authorization: `Bearer ${token}` },
     });
-
-    if (!response.ok) {
-      throw new Error(`Kļūda ${response.statusText}`);
-    }
-
-    await fetchWorkers();
-    closeDialog();
-    showMessage.value = true;
-    message.value = 'Veiksmīgi';
-    setTimeout(() => (showMessage.value = false), 3000); // Скрыть сообщение через 3 секунды
+    materials.value.push(response.data);
+    newMaterial.value = { nosaukums: '', daudzums: '', vieniba: '', noliktava: '', vieta: '' };
+    showAddDialog.value = false;
   } catch (error) {
-    console.error('Kļūda', error);
-    showMessage.value = true;
-    message.value = 'Neizdevās';
-    setTimeout(() => (showMessage.value = false), 3000); // Скрыть сообщение через 3 секунды
+    console.error('Error adding material:', error);
   }
 };
 
-// Удаление работника
-const deleteItem = async () => {
-  if (!checkToken()) return; // Проверка токена
+const addEmployee = async () => {
   try {
-    if (!editingItem.value) return;
-
     const token = localStorage.getItem('authToken');
-    const response = await fetch(`${API_URL}/employees/${editingItem.value._id}`, {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+    const response = await axios.post('http://127.0.0.1:5000/employees', newEmployee.value, {
+      headers: { Authorization: `Bearer ${token}` },
     });
-
-    if (!response.ok) {
-      throw new Error(`Kļūda ${response.statusText}`);
-    }
-
-    await fetchWorkers();
-    closeDialog();
-    showMessage.value = true;
-    message.value = 'Veiksmīgi  izdzēsts';
-    setTimeout(() => (showMessage.value = false), 3000); // Скрыть сообщение через 3 секунды
+    employees.value.push(response.data);
+    newEmployee.value = { vards: '', uzvards: '', amats: '' };
+    showAddDialog.value = false;
   } catch (error) {
-    console.error('Kļūda', error);
-    showMessage.value = true;
-    message.value = 'Neidzevās';
-    setTimeout(() => (showMessage.value = false), 3000); // Скрыть сообщение через 3 секунды
+    console.error('Error adding employee:', error);
   }
 };
 
-onMounted(async () => {
-  await fetchWorkers();
+// Функция для открытия диалога
+const openAddDialog = () => {
+  showAddDialog.value = true;
+};
+
+// Функции для удаления
+const deleteOrder = async (id) => {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await axios.delete(`http://127.0.0.1:5000/orders/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (response.status === 200) {
+      orders.value = orders.value.filter(order => order.id !== id);
+    }
+  } catch (error) {
+    console.error('Error deleting order:', error);
+  }
+};
+
+const deleteMaterial = async (id) => {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await axios.delete(`http://127.0.0.1:5000/materials/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (response.status === 200) {
+      materials.value = materials.value.filter(material => material.id !== id);
+    }
+  } catch (error) {
+    console.error('Error deleting material:', error);
+  }
+};
+
+const deleteEmployee = async (id) => {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await axios.delete(`http://127.0.0.1:5000/employees/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (response.status === 200) {
+      employees.value = employees.value.filter(employee => employee.id !== id);
+    }
+  } catch (error) {
+    console.error('Error deleting employee:', error);
+  }
+};
+
+// Получение данных при монтировании
+onMounted(() => {
+  fetchOrders();
+  fetchMaterials();
+  fetchWorkers();
 });
 </script>

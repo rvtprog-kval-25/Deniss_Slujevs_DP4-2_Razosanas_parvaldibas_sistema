@@ -22,25 +22,31 @@
         <div class="h-12 bg-gray-200 rounded w-1/2"></div>
       </div>
 
-      <!-- Отображение данных материала -->
-      <div v-else class="space-y-6">
-        <div class="space-y-2">
-          <h1 class="text-2xl font-bold text-gray-900">{{ material.nosaukums || "Nav atrasts" }}</h1>
-          <p class="text-black text-sm">Daudzums: {{ material.daudzums || "Nav norādīts" }}</p>
-        </div>
+  <!-- Отображение данных материала -->
+<div v-else class="space-y-6">
+  <!-- Название и характеристики -->
+  <div class="space-y-2">
+    <h1 class="text-3xl font-bold text-gray-900">{{ material.nosaukums || "Nav atrasts" }}</h1>
+    <div class="grid grid-cols-2 gap-4 text-sm text-gray-800">
+      <p><span class="font-semibold">Daudzums:</span> {{ material.daudzums || "Nav norādīts" }}</p>
+      <p><span class="font-semibold">Vienība:</span> {{ material.vieniba || material.vienibas || "Nav norādīts" }}</p>
+    </div>
+  </div>
 
-        <!-- Информация о складе -->
-        <div class="p-4 bg-blue-50 border border-blue-100 rounded-md">
-          <h3 class="text-lg font-medium text-gray-800">Noliktavas informācija:</h3>
-          <div class="flex items-center mt-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h11l5-5M3 14h8l5 5"/>
-            </svg>
-            <span class="text-blue-800 font-medium">
-              Noliktava: {{ material.warehouse?.warehouse_name || "Nezināms noliktava" }}
-            </span>
-          </div>
-        </div>
+  <!-- Информация о складе -->
+  <div class="p-4 bg-gray-100 border border-gray-300 rounded-md shadow-sm">
+    <h3 class="text-lg font-medium text-gray-800 mb-2">Noliktavas informācija</h3>
+    <div class="grid grid-cols-2 gap-4 text-sm text-gray-700">
+      <div>
+        <span class="font-semibold">Noliktava:</span> {{ material.noliktava || "Nezināma" }}
+      </div>
+      <div>
+        <span class="font-semibold">Vieta:</span> {{ material.vieta || "Nav norādīta" }}
+      </div>
+    </div>
+  </div>
+
+
 
         <!-- Ошибка -->
         <div v-if="material.nosaukums === 'Nav atrasts' || error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -94,7 +100,7 @@ const fetchMaterial = async () => {
     console.log("Fetched material data:", data);
 
     // Проверяем, что данные содержат необходимые поля
-    if (!data.nosaukums || !data.warehouse) {
+    if (!data.nosaukums || !data.noliktava) {
       throw new Error("Nepilnīgi dati par materiālu");
     }
 

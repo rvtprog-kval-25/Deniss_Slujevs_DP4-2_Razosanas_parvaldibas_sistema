@@ -27,18 +27,19 @@
         <div class="space-y-2">
           <h1 class="text-2xl font-bold text-gray-900">{{ order.nosaukums || "Nav atrasts" }}</h1>
           <p class="text-gray-600">Statuss: {{ order.status || "Nav norādīts" }}</p>
+          <p class="text-gray-600">Daudzums: {{ order.daudzums }}</p>
         </div>
 
         <!-- Worker Information -->
-        <div v-if="order.darbinieks" class="p-4 bg-blue-50 border border-blue-100 rounded-md">
+        <div v-if="order.employee" class="p-4 bg-gray-50 border border-gray-200 rounded-md">
           <h3 class="text-lg font-medium text-gray-800">Darbinieks:</h3>
           <p class="mt-2 text-gray-600">
-            {{ order.darbinieks.vards }} {{ order.darbinieks.uzvards }}
+            {{ order.employee.vards }} {{ order.employee.uzvards }}
           </p>
         </div>
 
         <!-- Materials Information -->
-        <div v-if="order.materials && order.materials.length" class="p-4 bg-blue-50 border border-blue-100 rounded-md">
+        <div v-if="order.materials && order.materials.length" class="p-4 bg-gray-50 border border-gray-200 rounded-md">
           <h3 class="text-lg font-medium text-gray-800">Materiāli:</h3>
           <ul class="mt-2 space-y-2">
             <li
@@ -48,7 +49,7 @@
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                class="h-6 w-6 text-blue-600 mr-2"
+                class="h-6 w-6 text-gray-600 mr-2"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -60,11 +61,41 @@
                   d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4-4a8 8 0 1111.314 0z"
                 />
               </svg>
-              <span class="text-blue-800 font-medium">
-                Materiāls: {{ material.material_name || "Nav norādīts" }} ({{ material.quantity || "Nav norādīts" }} vienības)
-              </span>
+              <span class="text-gray-800 font-medium">
+                  Materiāls: {{ material.material_name || "Nav norādīts" }}
+                  (
+                    {{
+                      material.quantity !== undefined && material.quantity !== 'Nav norādīts' && order.daudzums !== undefined
+                        ? `${material.quantity} x ${order.daudzums}`
+                        : "Nav norādīts"
+                    }}
+                    = {{ (parseInt(material.quantity) || 0) * (parseInt(order.daudzums) || 0) }} vienības
+                  )
+                </span>
+
             </li>
           </ul>
+        </div>
+
+        <!-- Buttons: Only if not finished -->
+        <div v-if="order.status !== 'Pabeigts'" class="flex flex-col items-center gap-4">
+          <!-- Accept Order Button -->
+          <button
+            v-if="order.status === 'Nav sākts'"
+            @click="acceptOrder"
+            class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            Pieņemt pasūtījumu
+          </button>
+
+          <!-- Finish Order Button -->
+          <button
+            v-if="order.status === 'Pieņemts' && order.employee && order.employee.id === currentUser.id"
+            @click="finishOrder"
+            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+          >
+            Pabeigt pasūtījumu
+          </button>
         </div>
 
         <!-- Error Message -->
@@ -83,47 +114,100 @@
 import { ref, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 
+// Router setup
 const router = useRouter();
 const route = useRoute();
 
-// States for loading, error, and order data
+// States
 const isLoading = ref(true);
 const error = ref(null);
 const order = ref({});
+const isAccepted = ref(false);
 
-// Function to get the token from localStorage
-const getToken = () => {
-  return localStorage.getItem("authToken"); // Get token from localStorage
+
+const currentUser = {
+  id: parseInt(localStorage.getItem("userId")) || null,
 };
 
-// Fetch order by ID with token in the header
+// Function to get token
+const getToken = () => {
+  return localStorage.getItem("authToken");
+};
+
+// Fetch order details
 const fetchOrder = async () => {
   try {
-    const orderId = route.params.id; // Get order ID from URL
-    const token = getToken(); // Get the token
+    const orderId = route.params.id;
+    const token = getToken();
 
-    if (!token) {
-      throw new Error("Nav pieejams autorizācijas tokens. Lūdzu, piesakieties.");
-    }
+    if (!token) throw new Error("Nav pieejams autorizācijas tokens. Lūdzu, piesakieties.");
 
-    // Fetch order with authorization token in header
     const response = await fetch(`http://127.0.0.1:5000/orders/${orderId}`, {
       headers: {
-        Authorization: `Bearer ${token}`, // Add token to the headers
+        Authorization: `Bearer ${token}`,
       },
     });
-    
-    if (!response.ok) {
-      throw new Error("Pasūtījums nav atrasts");
-    }
+
+    if (!response.ok) throw new Error("Pasūtījums nav atrasts");
 
     const data = await response.json();
     order.value = data;
+
+    isAccepted.value = !!data.employee;
   } catch (err) {
     error.value = err.message || "Error fetching order";
     order.value = { nosaukums: "Nav atrasts" };
   } finally {
     isLoading.value = false;
+  }
+};
+
+// Accept order
+const acceptOrder = async () => {
+  const token = getToken();
+  const orderId = route.params.id;
+
+  try {
+    const response = await fetch(`http://127.0.0.1:5000/orders/${orderId}/accept`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ employee_id: currentUser.id }),
+    });
+
+    if (!response.ok) throw new Error("Kļūda pieņemot pasūtījumu");
+
+    const data = await response.json();
+    order.value = data;
+    isAccepted.value = true;
+  } catch (err) {
+    error.value = err.message || "Error accepting order";
+  }
+};
+
+// Finish order
+const finishOrder = async () => {
+  const token = getToken();
+  const orderId = route.params.id;
+
+  try {
+    const response = await fetch(`http://127.0.0.1:5000/orders/${orderId}/finish`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status: "Pabeigts" }),
+    });
+
+    if (!response.ok) throw new Error("Kļūda pabeidzot pasūtījumu");
+
+    const data = await response.json();
+    order.value = data;
+  } catch (err) {
+    error.value = err.message || "Error finishing order";
   }
 };
 

@@ -1,90 +1,76 @@
 <template>
-  <div class="h-full bg-gray-100 flex flex-col items-center py-12">
-    <!-- Поисковая строка -->
-    <div class="w-full max-w-4xl px-4 mb-6">
-      <div class="sticky top-0 bg-gray-100 z-10">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Meklē materiālus"
-          class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
-        />
-      </div>
+  <div class="min-h-screen bg-gray-100 py-10 px-4 flex flex-col items-center">
+    <!-- Поиск -->
+    <div class="w-full max-w-4xl mb-6">
+      <input
+        v-model="searchQuery"
+        type="text"
+        placeholder="Meklē materiālus..."
+        class="w-full px-4 py-2 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-gray-500 focus:outline-none"
+      />
     </div>
 
-    <!-- Состояние загрузки -->
+    <!-- Состояния -->
     <div v-if="loading" class="text-gray-600 text-center">Dati tiek ielādēti...</div>
-
-    <!-- Ошибка загрузки -->
-    <div v-if="error" class="text-red-500 text-center">Kļūda: {{ error }}</div>
+    <div v-else-if="error" class="text-red-500 text-center">Kļūda: {{ error }}</div>
+    <div v-else-if="filteredMaterials.length === 0" class="text-gray-500 text-center">
+      Nav atbilstošu materiālu
+    </div>
 
     <!-- Список материалов -->
-    <div v-if="!loading && !error" class="w-full max-w-6xl bg-white rounded-lg shadow-md">
-      <ul>
-        <li
-          v-for="material in filteredMaterials"
-          :key="material._id"
-          class="flex items-center justify-between px-6 py-4 border-b last:border-b-0 hover:bg-gray-100 transition-colors cursor-pointer"
+    <div v-else class="w-full max-w-6xl bg-white rounded-lg shadow divide-y divide-gray-200">
+      <div
+        v-for="material in filteredMaterials"
+        :key="material.id"
+        class="flex justify-between items-center px-6 py-4 hover:bg-gray-50 transition"
+      >
+        <div>
+          <h3 class="text-lg font-semibold text-gray-800">{{ material.nosaukums }}</h3>
+        </div>
+        <button
+          @click="goToDetails(material.id)"
+          class="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600"
         >
-          <!-- Информация о материале -->
-          <div>
-            <h3 class="text-lg font-semibold text-gray-800">{{ material.nosaukums }}</h3>
-            <p class="text-sm text-gray-600">Daudzums: {{ material.daudzums }}</p>
-          </div>
-          <!-- Кнопка подробнее -->
-          <button
-            @click="goToDetails(material._id)"
-            class="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors"
-          >
-            Sīkāk
-          </button>
-        </li>
-      </ul>
-    </div>
-
-    <!-- Сообщение при отсутствии результатов -->
-    <div
-      v-if="!loading && !error && filteredMaterials.length === 0"
-      class="mt-8 text-gray-600 text-center"
-    >
-      Nav atbilstošu materiālu
+          Sīkāk
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 
 const router = useRouter();
+
 const materials = ref([]);
-const searchQuery = ref("");
+const searchQuery = ref('');
 const loading = ref(true);
 const error = ref(null);
 
-// Функция загрузки данных с Flask API
 const fetchMaterials = async () => {
-  const token = localStorage.getItem('authToken');  // Чтение токена из localStorage
+  const token = localStorage.getItem('authToken');
   if (!token) {
-    error.value = "Token not found!";
+    error.value = 'Autorizācijas tokens nav atrasts.';
     loading.value = false;
     return;
   }
 
   try {
-    const response = await fetch("http://127.0.0.1:5000/materials", {
-      method: 'GET',
+    const res = await fetch('http://127.0.0.1:5000/materials', {
       headers: {
-        'Authorization': `Bearer ${token}`,  // Отправка токена в заголовке Authorization
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
 
-    if (!response.ok) {
-      throw new Error("Neizdevās ielādēt materiālus");
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Neizdevās ielādēt materiālus');
     }
 
-    materials.value = await response.json();
+    materials.value = data.materials;
   } catch (err) {
     error.value = err.message;
   } finally {
@@ -92,33 +78,22 @@ const fetchMaterials = async () => {
   }
 };
 
-// Загружаем данные при монтировании компонента
 onMounted(fetchMaterials);
 
-// Фильтрация материалов по поисковому запросу
 const filteredMaterials = computed(() => {
   const query = searchQuery.value.toLowerCase();
-  return materials.value.filter(
-    (material) =>
-      material.nosaukums.toLowerCase().includes(query) ||
-      material.daudzums.toString().includes(query)
+  return materials.value.filter((m) =>
+    [m.nosaukums, m.noliktava, m.vieta, m.vienibas].some((field) =>
+      field.toLowerCase().includes(query)
+    )
   );
 });
 
-// Функция перехода к деталям материала
 const goToDetails = (id) => {
-  console.log("Navigating to material with ID:", id); // Лог
-  router.push({ name: "MaterialDetails", params: { id: String(id) } });
+  router.push({ name: 'MaterialDetails', params: { id: String(id) } });
 };
 </script>
 
 <style scoped>
-ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-li:last-child {
-  border-bottom: none;
-}
+/* Подчистка под Tailwind — доп. стили не нужны */
 </style>

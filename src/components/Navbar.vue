@@ -4,7 +4,7 @@
       <div class="flex justify-between">
         <div class="flex space-x-7">
           <div>
-            <a href="/home" class="flex items-center py-4 px-2">
+            <a class="flex items-center py-4 px-2">
               <span class="font-semibold text-xl">Sencis</span>
             </a>
           </div>
