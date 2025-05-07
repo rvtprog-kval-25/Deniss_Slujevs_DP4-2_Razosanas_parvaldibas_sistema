@@ -133,39 +133,6 @@
           </div>
         </div>
 
-        <!-- Mobile navigation -->
-        <div class="md:hidden mb-6">
-          <div class="inline-flex h-10 items-center justify-center rounded-lg bg-white p-1 text-gray-700 shadow-sm border w-full">
-            <button 
-              @click="currentTab = 'orders'" 
-              :class="[ 
-                'flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-all focus:outline-none', 
-                currentTab === 'orders' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:text-gray-900' 
-              ]"
-            >
-              Pasūtījumi
-            </button>
-            <button 
-              @click="currentTab = 'materials'" 
-              :class="[ 
-                'flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-all focus:outline-none', 
-                currentTab === 'materials' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:text-gray-900' 
-              ]"
-            >
-              Materiāli
-            </button>
-            <button 
-              @click="currentTab = 'workers'" 
-              :class="[ 
-                'flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-all focus:outline-none', 
-                currentTab === 'workers' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:text-gray-900' 
-              ]"
-            >
-              Darbinieki
-            </button>
-          </div>
-        </div>
-
         <!-- Page header -->
         <div class="flex justify-between items-center mb-6">
           <div>
@@ -222,9 +189,8 @@
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Izvēlieties noliktavu</label>
                   <select v-model="newMaterial.noliktava" class="p-2.5 w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white" required>
-                    <option value="noliktava1">Noliktava 1</option>
-                    <option value="noliktava2">Noliktava 2</option>
-                    <option value="noliktava3">Noliktava 3</option>
+                    <option value="Galvenā noliktava">Galvenā noliktava</option>
+                    <option value="Baltā noliktava">Baltā noliktava</option>
                   </select>
                 </div>
                 <div>
@@ -296,6 +262,13 @@
                         Skatīt
                       </button>
                       <button 
+                        @click="openEditDialog('orders', order)" 
+                        class="text-green-600 hover:text-green-900 font-medium"
+                      >
+                        Rediģēt
+                      </button>
+
+                      <button 
                         @click="deleteOrder(order.id)" 
                         class="text-red-600 hover:text-red-900 font-medium"
                       >
@@ -335,11 +308,18 @@
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ material.vieta }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <button 
+                      @click="openEditDialog('materials', material)" 
+                      class="font-medium m-2 text-black"
+                    >
+                      Rediģēt
+                    </button>
+                    <button 
                       @click="deleteMaterial(material.id)" 
-                      class="text-red-600 hover:text-red-900 font-medium"
+                      class="text-red-600 hover:text-red-900 font-bold"
                     >
                       Dzēst
                     </button>
+                    
                   </td>
                 </tr>
                 <tr v-if="materials.length === 0">
@@ -371,11 +351,18 @@
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ employee.kods }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <button 
+                      @click="openEditDialog('workers', employee)" 
+                      class="text-black font-medium m-2"
+                    >
+                      Rediģēt 
+                    </button>
+                    <button 
                       @click="deleteEmployee(employee.id)" 
-                      class="text-red-600 hover:text-red-900 font-medium"
+                      class="text-red-600 hover:text-red-900 font-bold"
                     >
                       Dzēst
                     </button>
+                    
                   </td>
                 </tr>
                 <tr v-if="employees.length === 0">
@@ -450,37 +437,27 @@
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 
-// States for data
+// States for UI
+const currentTab = ref('orders');
 const showDetailsDialog = ref(false);
 const detailsData = ref({});
 const orderMaterials = ref([]);
+const showAddDialog = ref(false);
+const editDialog = ref(false);
+const editData = ref({});
+const currentEditType = ref('');
 
-// Function to open modal with detailed information
-const openDetailsDialog = (data) => {
-  detailsData.value = { ...data };
-  // Here you would typically fetch materials for this order
-  // For now using empty array as placeholder
-  orderMaterials.value = [];
-  showDetailsDialog.value = true;
-};
-
-// Function to close modal
-const closeDetailsDialog = () => {
-  showDetailsDialog.value = false;
-};
-
-const currentTab = ref('orders');
+// Data states
 const orders = ref([]);
 const materials = ref([]);
 const employees = ref([]);
 
-// States for add form
+// Form states
 const newOrder = ref({ nosaukums: '', daudzums: '', status: 'Nav sākts' });
 const newMaterial = ref({ nosaukums: '', daudzums: '', vieniba: '', noliktava: '', vieta: '' });
 const newEmployee = ref({ vards: '', uzvards: '', amats: '' });
-const showAddDialog = ref(false);
 
-// Functions to fetch data
+// Data fetching
 const fetchOrders = async () => {
   try {
     const token = localStorage.getItem('authToken');
@@ -517,75 +494,60 @@ const fetchWorkers = async () => {
   }
 };
 
-// Functions to add data
+// Add functions
 const addOrder = async () => {
   try {
-    if (!newOrder.value.status) {
-      newOrder.value.status = 'Nav sākts';  // Default status
+    const token = localStorage.getItem('authToken');
+
+    // Проверка заполнения полей
+    if (!newOrder.value.nosaukums || !newOrder.value.daudzums) {
+      alert('Заполните все обязательные поля!');
+      return;
     }
 
-    const token = localStorage.getItem('authToken');
-    const response = await axios.post('http://127.0.0.1:5000/orders', newOrder.value, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    // Отправка запроса
+    await axios.post('http://127.0.0.1:5000/orders',
+      {
+        nosaukums: newOrder.value.nosaukums,
+        daudzums: newOrder.value.daudzums,
+        status: newOrder.value.status
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
 
-    // Add new order to list
-    orders.value.push(response.data);
-
-    // Clear form
-    newOrder.value = { nosaukums: '', daudzums: '', status: 'Nav sākts' };
-
-    // Close dialog
-    showAddDialog.value = false;
-
+    await fetchOrders(); // обновление списка заказов
+    showAddDialog.value = false; // закрытие диалога
+    newOrder.value = { nosaukums: '', daudzums: '', status: '' }; // сброс формы
   } catch (error) {
     console.error('Error adding order:', error);
   }
 };
 
-const addMaterial = async () => {
-  try {
-    const token = localStorage.getItem('authToken');
-    const response = await axios.post('http://127.0.0.1:5000/materials', newMaterial.value, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    materials.value.push(response.data);
-    newMaterial.value = { nosaukums: '', daudzums: '', vieniba: '', noliktava: '', vieta: '' };
-    showAddDialog.value = false;
-  } catch (error) {
-    console.error('Error adding material:', error);
-  }
-};
 
 const addEmployee = async () => {
   try {
     const token = localStorage.getItem('authToken');
-    const response = await axios.post('http://127.0.0.1:5000/employees', newEmployee.value, {
+    await axios.post('http://127.0.0.1:5000/employees', newEmployee.value, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    employees.value.push(response.data);
-    newEmployee.value = { vards: '', uzvards: '', amats: '' };
+    await fetchWorkers();
     showAddDialog.value = false;
+    newEmployee.value = { vards: '', uzvards: '', amats: '' };
   } catch (error) {
     console.error('Error adding employee:', error);
   }
 };
 
-// Function to open dialog
-const openAddDialog = () => {
-  showAddDialog.value = true;
-};
-
-// Functions for deletion
+// Delete functions
 const deleteOrder = async (id) => {
   try {
     const token = localStorage.getItem('authToken');
-    const response = await axios.delete(`http://127.0.0.1:5000/orders/${id}`, {
+    await axios.delete(`http://127.0.0.1:5000/orders/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (response.status === 200) {
-      orders.value = orders.value.filter(order => order.id !== id);
-    }
+    await fetchOrders();
   } catch (error) {
     console.error('Error deleting order:', error);
   }
@@ -594,12 +556,10 @@ const deleteOrder = async (id) => {
 const deleteMaterial = async (id) => {
   try {
     const token = localStorage.getItem('authToken');
-    const response = await axios.delete(`http://127.0.0.1:5000/materials/${id}`, {
+    await axios.delete(`http://127.0.0.1:5000/materials/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (response.status === 200) {
-      materials.value = materials.value.filter(material => material.id !== id);
-    }
+    await fetchMaterials();
   } catch (error) {
     console.error('Error deleting material:', error);
   }
@@ -608,28 +568,23 @@ const deleteMaterial = async (id) => {
 const deleteEmployee = async (id) => {
   try {
     const token = localStorage.getItem('authToken');
-    const response = await axios.delete(`http://127.0.0.1:5000/employees/${id}`, {
+    await axios.delete(`http://127.0.0.1:5000/employees/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (response.status === 200) {
-      employees.value = employees.value.filter(employee => employee.id !== id);
-    }
+    await fetchWorkers();
   } catch (error) {
     console.error('Error deleting employee:', error);
   }
 };
 
-// Functions for editing data
+// Edit functions
 const editOrder = async (id, updatedOrder) => {
   try {
     const token = localStorage.getItem('authToken');
-    const response = await axios.put(`http://127.0.0.1:5000/orders/${id}`, updatedOrder, {
+    await axios.put(`http://127.0.0.1:5000/orders/${id}`, updatedOrder, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    const index = orders.value.findIndex(order => order.id === id);
-    if (index !== -1) {
-      orders.value[index] = response.data;
-    }
+    await fetchOrders();
   } catch (error) {
     console.error('Error editing order:', error);
   }
@@ -638,13 +593,10 @@ const editOrder = async (id, updatedOrder) => {
 const editMaterial = async (id, updatedMaterial) => {
   try {
     const token = localStorage.getItem('authToken');
-    const response = await axios.put(`http://127.0.0.1:5000/materials/${id}`, updatedMaterial, {
+    await axios.put(`http://127.0.0.1:5000/materials/${id}`, updatedMaterial, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    const index = materials.value.findIndex(material => material.id === id);
-    if (index !== -1) {
-      materials.value[index] = response.data;
-    }
+    await fetchMaterials();
   } catch (error) {
     console.error('Error editing material:', error);
   }
@@ -653,31 +605,22 @@ const editMaterial = async (id, updatedMaterial) => {
 const editEmployee = async (id, updatedEmployee) => {
   try {
     const token = localStorage.getItem('authToken');
-    const response = await axios.put(`http://127.0.0.1:5000/employees/${id}`, updatedEmployee, {
+    await axios.put(`http://127.0.0.1:5000/employees/${id}`, updatedEmployee, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    const index = employees.value.findIndex(employee => employee.id === id);
-    if (index !== -1) {
-      employees.value[index] = response.data;
-    }
+    await fetchWorkers();
   } catch (error) {
     console.error('Error editing employee:', error);
   }
 };
 
-// States for editing
-const editDialog = ref(false);
-const editData = ref({});
-const currentEditType = ref('');
-
-// Function to open edit dialog
+// Dialog handlers
 const openEditDialog = (type, data) => {
   currentEditType.value = type;
   editData.value = { ...data };
   editDialog.value = true;
 };
 
-// Function to save changes
 const saveEdit = async () => {
   if (currentEditType.value === 'orders') {
     await editOrder(editData.value.id, editData.value);
@@ -689,15 +632,28 @@ const saveEdit = async () => {
   editDialog.value = false;
 };
 
-// Function to cancel edit
 const cancelEdit = () => {
   editDialog.value = false;
 };
 
-// Fetch data on mount
-onMounted(() => {
-  fetchOrders();
-  fetchMaterials();
-  fetchWorkers();
+const openDetailsDialog = (data) => {
+  detailsData.value = { ...data };
+  orderMaterials.value = [];
+  showDetailsDialog.value = true;
+};
+
+const closeDetailsDialog = () => {
+  showDetailsDialog.value = false;
+};
+
+const openAddDialog = () => {
+  showAddDialog.value = true;
+};
+
+// Initial data load
+onMounted(async () => {
+  await fetchOrders();
+  await fetchMaterials();
+  await fetchWorkers();
 });
 </script>

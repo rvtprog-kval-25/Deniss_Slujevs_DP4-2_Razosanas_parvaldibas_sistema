@@ -2,7 +2,7 @@
   <div class="w-full h-full flex items-center justify-center bg-gray-100">
     <div class="max-w-md w-full space-y-8 p-6 bg-white rounded-lg shadow-md">
       <h2 class="text-center text-3xl font-extrabold text-gray-900">Sveiks</h2>
-      <form @submit.prevent="handleLogin" class="mt-8 space-y-6">
+      <form @submit.prevent="handleLogin" v-if="!isPasswordInput" class="mt-8 space-y-6">
         <div class="rounded-md shadow-sm -space-y-px">
           <div>
             <label for="kods" class="sr-only">Kods</label>
@@ -13,7 +13,7 @@
               type="text"
               autocomplete="off"
               required
-              :class="[
+              :class="[ 
                 'appearance-none rounded-none relative block w-full px-3 py-2 border text-gray-900 rounded-t-md focus:outline-none focus:ring-gray-500 focus:border-gray-500 focus:z-10 sm:text-sm',
                 errorMessage ? 'border-red-500 focus:border-red-500' : ''
               ]"
@@ -32,12 +32,46 @@
             Ieiet
           </button>
         </div>
-        <!-- Error Message with Animation -->
         <transition name="error-pulse">
           <div v-if="errorMessage" class="text-red-500 text-center mt-4">{{ errorMessage }}</div>
         </transition>
       </form>
-      <!-- Success Message with Animation -->
+
+      <!-- Password Input Form -->
+      <form v-if="isPasswordInput" @submit.prevent="handlePasswordSubmit" class="mt-8 space-y-6">
+        <div class="rounded-md shadow-sm -space-y-px">
+          <div>
+            <label for="password" class="sr-only">Parole</label>
+            <input
+              id="password"
+              v-model="password"
+              name="password"
+              type="password"
+              required
+              :class="[ 
+                'appearance-none rounded-none relative block w-full px-3 py-2 border text-gray-900 rounded-t-md focus:outline-none focus:ring-gray-500 focus:border-gray-500 focus:z-10 sm:text-sm',
+                passwordErrorMessage ? 'border-red-500 focus:border-red-500' : ''
+              ]"
+              placeholder="Ievadiet paroli"
+            />
+          </div>
+        </div>
+        <div>
+          <button
+            type="submit"
+            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all"
+            :disabled="isSubmitting"
+            :class="{ 'bg-gray-500 cursor-not-allowed': isSubmitting }"
+          >
+            <span class="absolute left-0 inset-y-0 flex items-center pl-3"></span>
+            Ielogoties kā administrators
+          </button>
+        </div>
+        <transition name="error-pulse">
+          <div v-if="passwordErrorMessage" class="text-red-500 text-center mt-4">{{ passwordErrorMessage }}</div>
+        </transition>
+      </form>
+
       <transition name="success-slide">
         <div
           v-if="showSuccess"
@@ -85,7 +119,10 @@ import { useRouter } from "vue-router";
 
 const router = useRouter();
 const kods = ref("");
+const password = ref("");
+const isPasswordInput = ref(false);
 const errorMessage = ref("");
+const passwordErrorMessage = ref("");
 const showSuccess = ref(false);
 const successMessage = ref("");
 const isSubmitting = ref(false);
@@ -105,68 +142,78 @@ const handleLogin = async () => {
     const response = await axios.post("http://127.0.0.1:5000/login", { kods: kods.value });
 
     if (response.data.success) {
-      localStorage.setItem("authToken", response.data.token);
-      localStorage.setItem("userId", response.data.user.id); // ✅ Сохраняем userId
-
-      successMessage.value = `${response.data.user.vards} ${response.data.user.uzvards}`;
-      showSuccess.value = true;
-
-      setTimeout(() => {
-        showSuccess.value = false;
-        const redirectPath = response.data.redirect;
-        if (redirectPath) {
-          router.push(redirectPath);
-        }
-      }, 2000);
+      if (response.data.user.amats === "Administrators") {
+        isPasswordInput.value = true;
+      } else {
+        // Сохраняем токен в localStorage
+        localStorage.setItem("authToken", response.data.token);
+        localStorage.setItem("userId", response.data.user.id);
+        
+        successMessage.value = `${response.data.user.vards} ${response.data.user.uzvards}`;
+        showSuccess.value = true;
+        
+        setTimeout(() => {
+          showSuccess.value = false;
+          router.push(response.data.redirect);
+        }, 2000);
+      }
     } else {
-      errorMessage.value = "Nepareizs kods";
+      errorMessage.value = response.data.error;
     }
   } catch (error) {
-    if (error.response?.data?.error) {
-      errorMessage.value = error.response.data.error;
-    } else if (error.code === "ERR_NETWORK") {
-      errorMessage.value = "Nav savienojuma ar serveri";
+    console.log(error);
+    errorMessage.value = error.response?.data?.error || "Servera kļūda";
+  } finally {
+    isSubmitting.value = false;
+  }
+};
+
+const handlePasswordSubmit = async () => {
+  passwordErrorMessage.value = "";
+  isSubmitting.value = true;
+
+  try {
+    const response = await axios.post("http://127.0.0.1:5000/login/password", {
+      kods: kods.value,
+      password: password.value,
+    });
+
+    if (response.data.success) {
+      localStorage.setItem("authToken", response.data.token);
+      localStorage.setItem("userId", response.data.user.id);
+      
+      successMessage.value = `${response.data.user.vards} ${response.data.user.uzvards}`;
+      showSuccess.value = true;
+      
+      setTimeout(() => {
+        showSuccess.value = false;
+        router.push(response.data.redirect);
+      }, 2000);
     } else {
-      errorMessage.value = "Servera kļūda";
+      passwordErrorMessage.value = "Nepareiza parole";
     }
+  } catch (error) {
+    passwordErrorMessage.value = "Servera kļūda";
   } finally {
     isSubmitting.value = false;
   }
 };
 </script>
 
-<style>
-/* Error animation (pulse) */
+<style scoped>
 .error-pulse-enter-active,
 .error-pulse-leave-active {
-  animation: pulse 1.2s;
-  transition: opacity 0.3s;
+  transition: opacity 0.3s ease-in-out;
 }
-.error-pulse-enter-from,
-.error-pulse-leave-to {
+.error-pulse-enter, .error-pulse-leave-to /* .error-pulse-leave-active in <2.1.8 */ {
   opacity: 0;
-  transform: translateY(10px);
-}
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
 }
 
-/* Success animation (slide up) */
-.success-slide-enter-active {
-  animation: slide-up 0.5s;
-}
+.success-slide-enter-active,
 .success-slide-leave-active {
-  animation: slide-up 0.5s reverse;
+  transition: transform 0.3s ease-out;
 }
-@keyframes slide-up {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+.success-slide-enter, .success-slide-leave-to /* .success-slide-leave-active in <2.1.8 */ {
+  transform: translateY(20px);
 }
 </style>
