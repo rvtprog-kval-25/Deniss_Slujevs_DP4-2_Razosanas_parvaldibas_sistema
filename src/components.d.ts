@@ -7,8 +7,18 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AddDialog: typeof import('./components/admin/dialogs/AddDialog.vue')['default']
+    AdminLayout: typeof import('./components/admin/AdminLayout.vue')['default']
+    AdminNavbar: typeof import('./components/admin/AdminNavbar.vue')['default']
+    AdminSidebar: typeof import('./components/admin/AdminSidebar.vue')['default']
+    DetailsDialog: typeof import('./components/admin/dialogs/DetailsDialog.vue')['default']
+    EditDialog: typeof import('./components/admin/dialogs/EditDialog.vue')['default']
+    MaterialTab: typeof import('./components/admin/tabs/MaterialTab.vue')['default']
     Navbar: typeof import('./components/Navbar.vue')['default']
+    OrdersTab: typeof import('./components/admin/tabs/OrdersTab.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    ShiftsTab: typeof import('./components/admin/tabs/ShiftsTab.vue')['default']
+    WorkerTab: typeof import('./components/admin/tabs/WorkerTab.vue')['default']
   }
 }

@@ -1,15 +1,23 @@
 <template>
-  <div class="h-full bg-gray-100 flex flex-col items-center py-12">
-    <div class="w-full max-w-6xl">
-      <!-- Поисковая строка -->
-      <div class="sticky top-0 bg-gray-100 z-10 px-4 py-2 flex items-center justify-between">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Meklēšana"
-          class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
-        />
-      </div>
+  <div class="min-h-screen bg-gray-100 py-10 px-4 flex flex-col items-center">
+    <!-- Кнопка + Поиск в одной строке -->
+    <div class="w-full max-w-4xl mb-6 flex items-center gap-4">
+      <!-- Кнопка домой -->
+      <button
+        @click="goHome"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-700 text-white hover:bg-gray-600"
+      >
+        Uz sākumu
+      </button>
+
+      <!-- Поле поиска -->
+      <input
+        v-model="searchQuery"
+        type="text"
+        placeholder="Meklē pasūtījumu..."
+        class="flex-1 px-4 py-2 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-gray-500 focus:outline-none"
+      />
+    </div>
 
       <!-- Список заказов -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-4 w-full mt-6">
@@ -40,7 +48,7 @@
         Nav tādu pasūtījumu
       </div>
     </div>
-  </div>
+
 </template>
 
 <script setup>
@@ -89,8 +97,9 @@ onMounted(async () => {
 const goToDetails = (id) => {
   router.push({ name: "OrderDetails", params: { id } });
 };
+const goHome = () => {
+  router.push('/home');
+
+};
 </script>
 
-<style scoped>
-/* Простая анимация загрузки и плавность */
-</style>

@@ -193,11 +193,13 @@ const handlePasswordSubmit = async () => {
       passwordErrorMessage.value = "Nepareiza parole";
     }
   } catch (error) {
-    passwordErrorMessage.value = "Servera kļūda";
+    passwordErrorMessage.value = "Nepareiza parole";
   } finally {
     isSubmitting.value = false;
   }
 };
+
+
 </script>
 
 <style scoped>

@@ -1,12 +1,21 @@
 <template>
   <div class="min-h-screen bg-gray-100 py-10 px-4 flex flex-col items-center">
-    <!-- Поиск -->
-    <div class="w-full max-w-4xl mb-6">
+    <!-- Кнопка + Поиск в одной строке -->
+    <div class="w-full max-w-4xl mb-6 flex items-center gap-4">
+      <!-- Кнопка домой -->
+      <button
+        @click="goHome"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-700 text-white hover:bg-gray-600"
+      >
+        Uz sākumu
+      </button>
+
+      <!-- Поле поиска -->
       <input
         v-model="searchQuery"
         type="text"
         placeholder="Meklē materiālus..."
-        class="w-full px-4 py-2 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-gray-500 focus:outline-none"
+        class="flex-1 px-4 py-2 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-gray-500 focus:outline-none"
       />
     </div>
 
@@ -91,6 +100,10 @@ const filteredMaterials = computed(() => {
 
 const goToDetails = (id) => {
   router.push({ name: 'MaterialDetails', params: { id: String(id) } });
+};
+const goHome = () => {
+  router.push('/home');
+
 };
 </script>
 
