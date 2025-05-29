@@ -1474,7 +1474,7 @@ const fetchShiftStats = async () => {
       params.end = `${periodEnd.value}T23:59:59`;
     }
 
-    const response = await axios.get('http://localhost:5000/api/shifts/stats', {
+    const response = await axios.get('https://kvdarbsbackend.vercel.app/api/shifts/stats', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
