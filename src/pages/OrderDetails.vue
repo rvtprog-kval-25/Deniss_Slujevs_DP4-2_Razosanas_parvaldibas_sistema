@@ -62,17 +62,16 @@
                 />
               </svg>
               <span class="text-gray-800 font-medium">
-                  Materiāls: {{ material.material_name || "Nav norādīts" }}
-                  (
-                    {{
-                      material.quantity !== undefined && material.quantity !== 'Nav norādīts' && order.daudzums !== undefined
-                        ? `${material.quantity} x ${order.daudzums}`
-                        : "Nav norādīts"
-                    }}
-                    = {{ (parseInt(material.quantity) || 0) * (parseInt(order.daudzums) || 0) }} vienības
-                  )
-                </span>
-
+                Materiāls: {{ material.material_name || "Nav norādīts" }}
+                (
+                  {{
+                    material.quantity !== undefined && material.quantity !== 'Nav norādīts' && order.daudzums !== undefined
+                      ? `${Number(material.quantity).toLocaleString('lv-LV', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} x ${Number(order.daudzums).toLocaleString('lv-LV', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : "Nav norādīts"
+                  }}
+                  = {{ Number(material.quantity * order.daudzums).toLocaleString('lv-LV', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} vienības
+                )
+              </span>
             </li>
           </ul>
         </div>
@@ -179,8 +178,8 @@ const acceptOrder = async () => {
 
     if (!response.ok) throw new Error("Kļūda pieņemot pasūtījumu");
 
-    const data = await response.json();
-    order.value = data;
+    // Uzreiz atjauno pasūtījuma datus pēc pieņemšanas
+    await fetchOrder();
     isAccepted.value = true;
   } catch (err) {
     error.value = err.message || "Error accepting order";
@@ -204,8 +203,8 @@ const finishOrder = async () => {
 
     if (!response.ok) throw new Error("Kļūda pabeidzot pasūtījumu");
 
-    const data = await response.json();
-    order.value = data;
+    // Uzreiz atjauno pasūtījuma datus pēc pabeigšanas
+    await fetchOrder();
   } catch (err) {
     error.value = err.message || "Error finishing order";
   }

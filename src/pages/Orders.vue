@@ -17,38 +17,53 @@
         placeholder="Meklē pasūtījumu..."
         class="flex-1 px-4 py-2 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-gray-500 focus:outline-none"
       />
+
+      <select v-model="statusFilter" class="px-4 py-2 rounded-lg border border-gray-300 bg-white shadow-sm focus:ring-2 focus:ring-gray-500 focus:outline-none">
+        <option value="">Visi statusi</option>
+        <option value="Nav sākts">Nav sākts</option>
+        <option value="Pieņemts">Pieņemts</option>
+        <option value="Pabeigts">Pabeigts</option>
+      </select>
     </div>
 
-      <!-- Список заказов -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-4 w-full mt-6">
-        <div v-for="order in filteredOrders" :key="order.id" class="flex flex-col items-center">
-          <div
-            class="bg-black rounded-lg w-64 h-64 flex flex-col items-center justify-center cursor-pointer p-4"
-            @click="goToDetails(order.id)"
-          >
-            <h3 class="text-lg font-semibold text-white">{{ order.nosaukums || "Pasūtījums" }}</h3>
-            <p class="text-sm font-light text-gray-300 mt-2">{{ order.status || "Nav statusa" }}</p>
-            
-
-            <!-- Ответственный -->
-            <p v-if="order.employee" class="text-sm text-white mt-2">
-              Atbildīgais: {{ order.employee.vards }} {{ order.employee.uzvards }}
-            </p>
-            <p v-else class="text-sm text-gray-400 italic mt-2">
-              Nav piešķirts Atbildīgais
-            </p>
-
-            <button class="mt-4 px-4 py-2 bg-gray-700 text-white rounded">Sīkāk</button>
+    <!-- Список заказов -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 px-4 w-full mt-6">
+      <div v-for="order in filteredOrders" :key="order.id" class="flex flex-col items-center">
+        <div
+          class="bg-white rounded-xl w-72 h-64 flex flex-col items-start justify-between cursor-pointer p-5 shadow hover:shadow-lg transition"
+          @click="goToDetails(order.id)"
+        >
+          <div class="flex items-center justify-between w-full">
+            <h3 class="text-lg font-semibold text-gray-900 truncate">{{ order.nosaukums || "Pasūtījums" }}</h3>
+            <span
+              class="ml-2 px-3 py-1 text-xs font-semibold rounded-full"
+              :class="{
+                'bg-green-100 text-green-800': order.status === 'Pabeigts',
+                'bg-gray-100 text-gray-800': order.status === 'Nav sākts',
+                'bg-blue-100 text-blue-800': order.status === 'Pieņemts'
+              }"
+            >
+              {{ order.status || "Nav statusa" }}
+            </span>
           </div>
+  
+          <div class="mt-1 text-sm text-gray-600">Daudzums: {{ Number(order.daudzums).toLocaleString('lv-LV', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</div>
+          <div class="mt-1 text-sm text-gray-600" v-if="order.employee">
+            Atbildīgais: {{ order.employee.vards }} {{ order.employee.uzvards }}
+          </div>
+          <div class="mt-1 text-sm text-gray-400 italic" v-else>
+            Nav piešķirts atbildīgais
+          </div>
+          <button class="mt-auto px-4 py-2 bg-gray-800 text-white rounded-lg w-full hover:bg-gray-900 transition">Sīkāk</button>
         </div>
       </div>
-
-      <!-- Пусто -->
-      <div v-if="filteredOrders.length === 0" class="mt-8 text-gray-600 text-center">
-        Nav tādu pasūtījumu
-      </div>
     </div>
 
+    <!-- Пусто -->
+    <div v-if="filteredOrders.length === 0" class="mt-8 text-gray-600 text-center">
+      Nav tādu pasūtījumu
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -59,14 +74,29 @@ import { useRouter } from "vue-router";
 const router = useRouter();
 const orders = ref([]);
 const searchQuery = ref("");
+const statusFilter = ref("");
 
-// Фильтр заказов
+const statusOrder = {
+  "Pieņemts": 2,
+  "Nav sākts": 3,
+  "Pabeigts": 4
+};
+
 const filteredOrders = computed(() => {
   const query = searchQuery.value.toLowerCase();
-  return orders.value.filter(order =>
+  let result = orders.value.filter(order =>
     (order.nosaukums || "").toLowerCase().includes(query) ||
     (order.status || "").toLowerCase().includes(query)
   );
+  if (statusFilter.value) {
+    result = result.filter(order => order.status === statusFilter.value);
+  }
+  return result.sort((a, b) => {
+    const aOrder = statusOrder[a.status] || 99;
+    const bOrder = statusOrder[b.status] || 99;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return (a.nosaukums || '').localeCompare(b.nosaukums || '');
+  });
 });
 
 // Получение токена
@@ -99,7 +129,6 @@ const goToDetails = (id) => {
 };
 const goHome = () => {
   router.push('/home');
-
 };
 </script>
 

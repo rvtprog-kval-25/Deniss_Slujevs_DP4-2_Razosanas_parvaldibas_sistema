@@ -9,9 +9,9 @@
             <button 
               @click="exportToPDF" 
               :disabled="!isPdfLibsReady || isPdfLibsLoading"
-              class="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition-all bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition-all bg-gray-100 text-gray-800 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <svg v-if="isPdfLibsLoading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg v-if="isPdfLibsLoading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
@@ -30,7 +30,7 @@
               :class="[ 
                 'w-full flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200', 
                 currentTab === 'orders' 
-                  ? 'bg-blue-600 text-white shadow-md' 
+                  ? 'bg-gray-900 text-white shadow-md' 
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100' 
               ]"
             >
@@ -46,7 +46,7 @@
               :class="[ 
                 'w-full flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200', 
                 currentTab === 'materials' 
-                  ? 'bg-blue-600 text-white shadow-md' 
+                  ? 'bg-gray-900 text-white shadow-md' 
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100' 
               ]"
             >
@@ -63,7 +63,7 @@
               :class="[ 
                 'w-full flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200', 
                 currentTab === 'workers' 
-                  ? 'bg-blue-600 text-white shadow-md' 
+                  ? 'bg-gray-900 text-white shadow-md' 
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100' 
               ]"
             >
@@ -81,7 +81,7 @@
               :class="[ 
                 'w-full flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200', 
                 currentTab === 'shifts' 
-                  ? 'bg-blue-600 text-white shadow-md' 
+                  ? 'bg-gray-900 text-white shadow-md' 
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100' 
               ]"
             >
@@ -99,7 +99,7 @@
               :class="[ 
                 'w-full flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200', 
                 currentTab === 'stats' 
-                  ? 'bg-blue-600 text-white shadow-md' 
+                  ? 'bg-gray-900 text-white shadow-md' 
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100' 
               ]"
             >
@@ -114,148 +114,263 @@
         </div>
       </aside>
 
-      <!-- Main content -->
+
       <main class="p-6 md:p-8 overflow-auto h-screen">
-        <!-- Edit Dialog -->
-        <div v-if="editDialog" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 scale-100">
+        <!-- Add/Edit Dialog -->
+        <div v-if="showAddDialog || editDialog" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 scale-100 max-h-screen overflow-y-auto">
             <h2 class="text-xl font-semibold mb-6 text-gray-800">
-              Rediģēt {{ currentEditType === 'orders' ? 'pasūtījumu' : currentEditType === 'materials' ? 'materiālu' : 'darbinieku' }}
+              {{ editDialog ? 'Rediģēt' : 'Pievienot' }} {{ currentEditType === 'orders' ? 'pasūtījumu' : currentEditType === 'materials' ? 'materiālu' : 'darbinieku' }}
             </h2>
-            <form @submit.prevent="saveEdit">
-              <div v-if="currentEditType === 'orders'" class="space-y-4">
+            <form @submit.prevent="editDialog ? saveEdit() : (currentTab === 'orders' ? addOrder() : currentTab === 'materials' ? addMaterial() : addEmployee())">
+              <!-- Order Form -->
+              <div v-if="showOrderForm || (editDialog && currentEditType === 'orders')" class="space-y-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Nosaukums</label>
-                  <input v-model="editData.nosaukums" class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors" placeholder="Nosaukums" required />
+                  <input 
+                    :value="editDialog ? editData.nosaukums : newOrder.nosaukums"
+                    @input="updateValue($event, 'nosaukums')"
+                    class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
+                    placeholder="Nosaukums"
+                    required
+                  />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Daudzums</label>
-                  <input v-model="editData.daudzums" class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors" placeholder="Daudzums" required />
+                  <input 
+                    :value="editDialog ? editData.daudzums : newOrder.daudzums"
+                    @input="updateValue($event, 'daudzums')"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
+                    placeholder="Daudzums"
+                    required
+                  />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Statuss</label>
-                  <select v-model="editData.status" class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors bg-white" required>
+                  <select 
+                    :value="editDialog ? editData.status : newOrder.status"
+                    @input="updateValue($event, 'status')"
+                    class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors bg-white"
+                    required
+                  >
                     <option value="Nav sākts">Nav sākts</option>
                     <option value="Procesā">Procesā</option>
                     <option value="Pabeigts">Pabeigts</option>
                   </select>
-                  <!-- Material search input for edit -->
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Meklēt materiālu</label>
-                    <div class="relative">
-                      <input
-                        v-model="materialSearch"
-                        type="text"
-                        class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
-                        placeholder="Sāciet rakstīt materiāla nosaukumu..."
-                      />
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-3.5 text-gray-400">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                      </svg>
-                    </div>
+                </div>
 
-                    <ul v-if="filteredMaterials.length && materialSearch" class="bg-white border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto z-10">
-                      <li
-                        v-for="material in filteredMaterials"
-                        :key="material.id"
-                        @click="addMaterialToEdit(material)"
-                        class="px-4 py-2.5 hover:bg-blue-50 cursor-pointer transition-colors border-b border-gray-100 last:border-0"
-                      >
-                        <div class="flex justify-between items-center">
-                          <span class="font-medium">{{ material.nosaukums }}</span>
-                          <span class="text-sm text-gray-500">Pieejams: {{ material.daudzums }} {{ material.vieniba }}</span>
-                        </div>
-                      </li>
-                    </ul>
+                <!-- Material search input -->
+                <div class="mt-4">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Meklēt materiālu</label>
+                  <div class="relative">
+                    <input
+                      v-model="materialSearch"
+                      type="text"
+                      class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 outline-none transition-colors"
+                      placeholder="Sāciet rakstīt materiāla nosaukumu..."
+                    />
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-3.5 text-gray-400">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
                   </div>
 
-                  <!-- Show selected materials -->
-                  <div v-if="editData.materials?.length" class="mt-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h4 class="text-sm font-semibold mb-3 text-gray-700">Materiāli pasūtījumā:</h4>
-                    <div v-for="(mat, index) in editData.materials" :key="mat.material_id || mat.id" class="flex items-center gap-3 mb-2 p-2 bg-white rounded-lg border border-gray-100 shadow-sm">
-                      <span class="flex-1 font-medium text-gray-800">{{ getMaterialName(mat.material_id || mat.id) }}</span>
-                      <div class="flex items-center gap-2">
-                        <input
-                          type="number"
-                          v-model.number="mat.quantity"
-                          min="1"
-                          class="w-20 border border-gray-300 p-1.5 rounded-md text-center"
-                        />
-                        <span class="text-sm text-gray-500">{{ getMaterialUnit(mat.material_id || mat.id) }}</span>
-                        <button
-                          type="button"
-                          @click="editData.materials.splice(index, 1)"
-                          class="text-red-500 hover:text-red-700 transition-colors p-1"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 6h18"></path>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
-                            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                          </svg>
-                        </button>
+                  <ul v-if="filteredMaterialsForSearch.length && materialSearch" class="bg-white border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto z-10">
+                    <li
+                      v-for="material in filteredMaterialsForSearch"
+                      :key="material.id"
+                      @click="editDialog ? addMaterialToEdit(material) : addMaterialToOrder(material)"
+                      class="px-4 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-0"
+                    >
+                      <div class="flex justify-between items-center">
+                        <span class="font-medium">{{ material.nosaukums }}</span>
+                        <span class="text-sm text-gray-500">Pieejams: {{ material.daudzums }} {{ material.vieniba }}</span>
                       </div>
+                    </li>
+                  </ul>
+                </div>
+
+                <!-- Show selected materials -->
+                <div v-if="editDialog ? editData.materials?.length : orderMaterials.length" class="mt-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h4 class="text-sm font-semibold mb-3 text-gray-700">Materiāli pasūtījumā:</h4>
+                  <div v-for="(mat, index) in editDialog ? editData.materials : orderMaterials" :key="mat.material_id || mat.id" class="flex items-center gap-3 mb-2 p-2 bg-white rounded-lg border border-gray-100 shadow-sm">
+                    <span class="flex-1 font-medium text-gray-800">{{ getMaterialName(mat.material_id || mat.id) }}</span>
+                    <div class="flex items-center gap-2">
+                      <input
+                        type="number"
+                        v-model.number="mat.quantity"
+                        min="0.01"
+                        step="0.01"
+                        class="w-20 border border-gray-300 p-1.5 rounded-md text-center"
+                      />
+                      <span class="text-sm text-gray-500">{{ getMaterialUnit(mat.material_id || mat.id) }}</span>
+                      <button
+                        type="button"
+                        @click="editDialog ? editData.materials.splice(index, 1) : orderMaterials.splice(index, 1)"
+                        class="text-red-500 hover:text-red-700 transition-colors p-1"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M3 6h18"></path>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+                          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                      </button>
                     </div>
                   </div>
-
                 </div>
               </div>
-              <div v-if="currentEditType === 'materials'" class="space-y-4">
+
+              <!-- Material Form -->
+              <div v-if="showMaterialForm || (editDialog && currentEditType === 'materials')" class="space-y-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Nosaukums</label>
-                  <input v-model="editData.nosaukums" class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors" placeholder="Nosaukums materiāla" required />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Daudzums</label>
-                  <input v-model="editData.daudzums" class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors" placeholder="Daudzums" required />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Mērvienība</label>
-                  <input v-model="editData.vieniba" class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors" placeholder="Mērvienība" required />
+                  <input 
+                    :value="editDialog ? editData.nosaukums : newMaterial.nosaukums"
+                    @input="updateValue($event, 'nosaukums')"
+                    class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
+                    placeholder="Nosaukums"
+                    required
+                  />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Noliktava</label>
-                  <select v-model="editData.noliktava" class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors bg-white" required>
-                    <option value="Galvenā noliktava">Galvenā noliktava</option>
-                    <option value="Baltā noliktava">Baltā noliktava</option>
+                  <select 
+                    :value="editDialog ? editData.noliktava : newMaterial.noliktava"
+                    @input="updateValue($event, 'noliktava')"
+                    class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors bg-white"
+                    required
+                  >
+                    <option value="Balta noliktava">Balta noliktava</option>
+                    <option value="Centrālā noliktava">Centrālā noliktava</option>
                   </select>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Vieta</label>
-                  <input v-model="editData.vieta" class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors" placeholder="Vieta" required />
+                  <input 
+                    :value="editDialog ? editData.vieta : newMaterial.vieta"
+                    @input="updateValue($event, 'vieta')"
+                    class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
+                    placeholder="Vieta"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Vienība</label>
+                  <input 
+                    :value="editDialog ? editData.vieniba : newMaterial.vieniba"
+                    @input="updateValue($event, 'vieniba')"
+                    class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
+                    placeholder="Vienība"
+                    required
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Daudzums</label>
+                  <input 
+                    :value="editDialog ? editData.daudzums : newMaterial.daudzums"
+                    @input="updateValue($event, 'daudzums')"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
+                    required
+                  />
                 </div>
               </div>
-              <div v-if="currentEditType === 'workers'" class="space-y-4">
+
+              <!-- Worker Form -->
+              <div v-if="showWorkerForm || (editDialog && currentEditType === 'workers')" class="space-y-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Vārds</label>
-                  <input v-model="editData.vards" class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors" placeholder="Vārds" required />
+                  <input 
+                    :value="editDialog ? editData.vards : newEmployee.vards"
+                    @input="updateValue($event, 'vards')"
+                    class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
+                    placeholder="Vārds"
+                    required
+                  />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Uzvārds</label>
-                  <input v-model="editData.uzvards" class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors" placeholder="Uzvārds" required />
+                  <input 
+                    :value="editDialog ? editData.uzvards : newEmployee.uzvards"
+                    @input="updateValue($event, 'uzvards')"
+                    class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
+                    placeholder="Uzvārds"
+                    required
+                  />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Amats</label>
-                  <input v-model="editData.amats" class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors" placeholder="Amats" required />
+                  <select 
+                    :value="editDialog ? editData.amats : newEmployee.amats"
+                    @input="updateValue($event, 'amats')"
+                    class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors bg-white"
+                    required
+                  >
+                    <option value="Šuvēja">Šuvēja</option>
+                    <option value="Galdnieks">Galdnieks</option>
+                    <option value="Komplektētājs">Komplektētājs</option>
+                    <option value="Kravejs">Kravejs</option>
+                    <option value="Tapsētajs">Tapsētajs</option>
+                    <option value="Administrators">Administrators</option>
+                  </select>
+                </div>
+                <div v-if="(editDialog ? editData.amats : newEmployee.amats) === 'Administrators'">
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-medium text-gray-700">Parole</label>
+                    <button 
+                      v-if="editDialog"
+                      @click="showPasswordChange = !showPasswordChange"
+                      type="button"
+                      class="text-sm text-gray-600 hover:text-gray-900"
+                    >
+                      {{ showPasswordChange ? 'Atcelt' : 'Mainīt paroli' }}
+                    </button>
+                  </div>
+                  <input 
+                    v-if="!editDialog || showPasswordChange"
+                    :value="editDialog ? editData.password : newEmployee.password"
+                    @input="updateValue($event, 'password')"
+                    type="password"
+                    class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
+                    placeholder="Parole"
+                    :required="!editDialog || showPasswordChange"
+                  />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Kods</label>
-                  <input v-model="editData.kods" class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors" placeholder="Kods" required />
+                  <input 
+                    :value="editDialog ? editData.kods : newEmployee.kods"
+                    @input="updateValue($event, 'kods')"
+                    type="number"
+                    min="1"
+                    class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
+                    required
+                  />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Statuss</label>
-                  <select v-model="editData.status" class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors bg-white" required>
+                  <select 
+                    :value="editDialog ? editData.status : newEmployee.status"
+                    @input="updateValue($event, 'status')"
+                    class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors bg-white"
+                    required
+                  >
                     <option value="Aktīvs">Aktīvs</option>
                     <option value="Neaktīvs">Neaktīvs</option>
                   </select>
                 </div>
               </div>
-              <div class="flex justify-end gap-3 mt-6">
-                <button @click="cancelEdit" type="button" class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
-                  Atcelt
+
+              <div class="flex justify-end gap-4 mt-6">
+                <button @click="editDialog ? cancelEdit() : closeAddDialog()" class="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
+                  {{ editDialog ? 'Atcelt' : 'Aizvērt' }}
                 </button>
-                <button type="submit" class="px-4 py-2.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
-                  Saglabāt
+                <button type="submit" class="px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                  {{ editDialog ? 'Saglabāt' : 'Pievienot' }}
                 </button>
               </div>
             </form>
@@ -265,7 +380,7 @@
         <!-- Page header -->
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 class="text-2xl font-bold text-gray-900 mb-1">
+            <h1 class="text-2xl font-bold text-gray-900">
               {{ currentTab === 'orders' ? 'Pasūtījumi' : 
                  currentTab === 'materials' ? 'Materiāli' : 
                  currentTab === 'workers' ? 'Darbinieki' : 
@@ -283,7 +398,7 @@
           <button 
             v-if="['orders', 'materials', 'workers'].includes(currentTab)"
             @click="openAddDialog" 
-            class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 bg-blue-600 text-white hover:bg-blue-700 h-10 px-5 py-2.5 shadow-sm"
+            class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 bg-gray-900 text-white hover:bg-gray-800 h-10 px-5 py-2.5 shadow-sm"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="mr-2">
               <path d="M5 12h14"></path>
@@ -293,229 +408,62 @@
           </button>
         </div>
 
-        <!-- Add Dialog -->
-        <div v-if="showAddDialog" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 scale-100">
-            <h2 class="text-xl font-semibold mb-6 text-gray-800">
-              Pievienot {{ currentTab === 'orders' ? 'pasūtījumu' : currentTab === 'materials' ? 'materiālu' : 'darbinieku' }}
-            </h2>
-            <form @submit.prevent="currentTab === 'orders' ? addOrder() : currentTab === 'materials' ? addMaterial() : addEmployee()">
-              <!-- Order Form -->
-              <div v-if="currentTab === 'orders'" class="space-y-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Nosaukums</label>
-                  <input v-model="newOrder.nosaukums" 
-                         class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
-                         placeholder="Pasūtījuma nosaukums"
-                         required>
-                </div>
-                
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Daudzums</label>
-                  <input v-model="newOrder.daudzums"
-                         type="number"
-                         class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
-                         placeholder="Daudzums"
-                         required>
-                </div>
-                
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Statuss</label>
-                  <select v-model="newOrder.status"
-                          class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors bg-white"
-                          required>
-                    <option value="Nav sākts">Nav sākts</option>
-                    <option value="Procesā">Procesā</option>
-                    <option value="Pabeigts">Pabeigts</option>
-                  </select>
-                </div>
-                
-                <!-- Material search input -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Meklēt materiālu</label>
-                  <div class="relative">
-                    <input
-                      v-model="materialSearch"
-                      type="text"
-                      class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
-                      placeholder="Sāciet rakstīt materiāla nosaukumu..."
-                    />
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-3.5 text-gray-400">
-                      <circle cx="11" cy="11" r="8"></circle>
-                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                  </div>
-
-                  <!-- Dropdown of filtered materials -->
-                  <ul v-if="filteredMaterials.length && materialSearch" class="bg-white border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto z-10">
-                    <li
-                      v-for="material in filteredMaterials"
-                      :key="material.id"
-                      @click="addMaterialToOrder(material)"
-                      class="px-4 py-2.5 hover:bg-blue-50 cursor-pointer transition-colors border-b border-gray-100 last:border-0"
-                    >
-                      <div class="flex justify-between items-center">
-                        <span class="font-medium">{{ material.nosaukums }}</span>
-                        <span class="text-sm text-gray-500">Pieejams: {{ material.daudzums }} {{ material.vieniba }}</span>
-                      </div>
-                    </li>
-                  </ul>
-                </div>
-
-                <!-- Selected materials list -->
-                <div v-if="orderMaterials.length" class="mt-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <h4 class="text-sm font-semibold mb-3 text-gray-700">Materiāli pasūtījumā:</h4>
-                  <div v-for="(mat, index) in orderMaterials" :key="mat.id" class="flex items-center gap-3 mb-2 p-2 bg-white rounded-lg border border-gray-100 shadow-sm">
-                    <span class="flex-1 font-medium text-gray-800">{{ mat.nosaukums }}</span>
-                    <div class="flex items-center gap-2">
-                      <input
-                        type="number"
-                        v-model.number="mat.quantity"
-                        min="1"
-                        class="w-20 border border-gray-300 p-1.5 rounded-md text-center"
-                      />
-                      <span class="text-sm text-gray-500">{{ mat.vieniba }}</span>
-                      <button
-                        type="button"
-                        @click="removeMaterialFromOrder(index)"
-                        class="text-red-500 hover:text-red-700 transition-colors p-1"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M3 6h18"></path>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
-                          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Material Form -->
-              <div v-if="currentTab === 'materials'" class="space-y-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Nosaukums</label>
-                  <input v-model="newMaterial.nosaukums"
-                         class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
-                         placeholder="Materiāla nosaukums"
-                         required>
-                </div>
-                
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Daudzums</label>
-                  <input v-model="newMaterial.daudzums"
-                         type="number"
-                         class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
-                         placeholder="Daudzums"
-                         required>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Mērvienība</label>
-                  <input v-model="newMaterial.vieniba"
-                         class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
-                         placeholder="Mērvienība"
-                         required>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Noliktava</label>
-                  <select v-model="newMaterial.noliktava"
-                          class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors bg-white"
-                          required>
-                    <option value="Galvenā noliktava">Galvenā noliktava</option>
-                    <option value="Baltā noliktava">Baltā noliktava</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Vieta</label>
-                  <input v-model="newMaterial.vieta"
-                         class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
-                         placeholder="Vieta"
-                         required>
-                </div>
-              </div>
-
-              <!-- Worker Form -->
-              <div v-if="currentTab === 'workers'" class="space-y-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Vārds</label>
-                  <input v-model="newEmployee.vards"
-                         class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
-                         placeholder="Darbinieka vārds"
-                         required>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Uzvārds</label>
-                  <input v-model="newEmployee.uzvards"
-                         class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
-                         placeholder="Darbinieka uzvārds"
-                         required>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Amats</label>
-                  <input v-model="newEmployee.amats"
-                         class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
-                         placeholder="Amats"
-                         required>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Kods</label>
-                  <input v-model="newEmployee.kods"
-                         class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
-                         placeholder="Identifikācijas kods"
-                         required>
-                </div>
-                
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Statuss</label>
-                  <select v-model="newEmployee.status"
-                          class="p-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors bg-white"
-                          required>
-                    <option value="Aktīvs">Aktīvs</option>
-                    <option value="Neaktīvs">Neaktīvs</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- Common Buttons -->
-              <div class="flex justify-end gap-3 mt-6">
-                <button @click="showAddDialog = false" 
-                        type="button" 
-                        class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
-                  Atcelt
-                </button>
-                <button type="submit" 
-                        class="px-4 py-2.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
-                  Saglabāt
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-
         <!-- Data Tables -->
         <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
           <!-- Orders Table -->
           <div v-if="currentTab === 'orders'" class="overflow-x-auto">
-            <div class="p-6 border-b border-gray-100">
-              <div class="relative max-w-md">
-                <input
-                  v-model="searchQuery"
-                  type="text"
-                  placeholder="Meklēt pasūtījumus..."
-                  class="w-full px-4 py-2.5 pl-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-colors"
-                />
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-2.5 text-gray-400">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
+              <div class="p-6 border-b border-gray-100">
+                <div class="relative max-w-md">
+                  <input
+                    v-model="searchQuery"
+                    type="text"
+                    placeholder="Meklēt pasūtījumus..."
+                    class="w-full px-4 py-2.5 pl-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 shadow-sm transition-colors"
+                  />
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-2.5 text-gray-400">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                </div>
               </div>
-            </div>
+              
+              <!-- Sorting and limits -->
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 p-6">
+                <div class="flex items-center gap-3">
+                  <label class="text-sm font-medium text-gray-700">Kārtot pēc:</label>
+                  <div class="relative">
+                    <select v-model="sortKey" class="appearance-none border border-gray-300 text-sm rounded-lg px-4 py-2 pr-8 bg-white shadow-sm focus:ring-2 focus:ring-gray-500">
+                      <option value="">Nav</option>
+                      <option value="nosaukums">Nosaukums</option>
+                      <option value="daudzums">Daudzums</option>
+                      <option value="status">Statuss</option>
+                    </select>
+                    <svg class="absolute right-2 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+
+                  <button @click="sortAsc = !sortAsc" class="flex items-center text-sm text-gray-700 hover:text-gray-900 transition">
+                    <svg v-if="sortAsc" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                    </svg>
+                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                    {{ sortAsc ? 'Augošā' : 'Dilstošā' }}
+                  </button>
+                </div>
+
+                <div class="flex items-center gap-3">
+                  <label class="text-sm font-medium text-gray-700">Rādīt ierakstus:</label>
+                  <select v-model="limitCount" class="border border-gray-300 text-sm rounded-lg px-4 py-2 bg-white shadow-sm focus:ring-2 focus:ring-gray-500 focus:border-gray-500">
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="9999">Visus</option>
+                  </select>
+                </div>
+              </div>
 
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
@@ -542,21 +490,21 @@
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                     <div class="flex space-x-3">
-                      <button @click="openDetailsDialog(order)" class="text-blue-600 hover:text-blue-800 font-medium transition-colors">Skatīt</button>
-                      <button @click="openEditDialog('orders', order)" class="text-green-600 hover:text-green-800 font-medium transition-colors">Rediģēt</button>
+                      <button @click="openDetailsDialog(order)" class="text-gray-700 hover:text-gray-900 font-medium transition-colors">Skatīt</button>
+                      <button @click="openEditDialog('orders', order)" class="text-gray-700 hover:text-gray-900 font-medium transition-colors">Rediģēt</button>
                       <button @click="deleteOrder(order.id)" class="text-red-600 hover:text-red-800 font-medium transition-colors">Dzēst</button>
                     </div>
                   </td>
                 </tr>
                 <tr v-if="orders.length === 0">
-                  <td colspan="5" class="px-6 py-10 text-center text-sm text-gray-500">
+                  <td colspan="4" class="px-6 py-10 text-center text-sm text-gray-500">
                     <div class="flex flex-col items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300 mb-3">
                         <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
                         <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
                       </svg>
                       <p>Nav pasūtījumu</p>
-                      <button @click="openAddDialog" class="mt-2 text-blue-600 hover:underline">Pievienot pasūtījumu</button>
+                      <button @click="openAddDialog" class="mt-2 text-gray-700 hover:underline">Pievienot pasūtījumu</button>
                     </div>
                   </td>
                 </tr>
@@ -572,12 +520,67 @@
                   v-model="shiftSearchQuery"
                   type="text"
                   placeholder="Meklēt pēc vārda..."
-                  class="w-full px-4 py-2.5 pl-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-colors"
+                  class="w-full px-4 py-2.5 pl-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 shadow-sm transition-colors"
                  />
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-2.5 text-gray-400">
                   <circle cx="11" cy="11" r="8"></circle>
                   <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
+              </div>
+            </div>
+            
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 p-6">
+              <!-- Date filters and sorting -->
+              <div class="flex flex-col md:flex-row gap-4 items-start md:items-center">
+                <div class="flex gap-4 items-center">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">No:</label>
+                    <input type="date" v-model="periodStart" class="p-2 border rounded-lg border-gray-300 focus:ring-2 focus:ring-gray-500" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Līdz:</label>
+                    <input type="date" v-model="periodEnd" class="p-2 border rounded-lg border-gray-300 focus:ring-2 focus:ring-gray-500" />
+                  </div>
+                
+                </div>
+                
+                <!-- Sorting -->
+                <div class="flex items-center gap-3">
+                  <label class="text-sm font-medium text-gray-700">Kārtot pēc:</label>
+                  <div class="relative">
+                    <select v-model="shiftSortKey" class="appearance-none border border-gray-300 text-sm rounded-lg px-4 py-2 pr-8 bg-white shadow-sm focus:ring-2 focus:ring-gray-500">
+                      <option value="">Nav</option>
+                      <option value="vards">Vārds</option>
+                      <option value="uzvards">Uzvārds</option>
+                      <option value="hours">Stundas</option>
+                      <option value="date">Datums</option>
+                    </select>
+                    <svg class="absolute right-2 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+
+                  <button @click="shiftSortAsc = !shiftSortAsc" class="flex items-center text-sm text-gray-700 hover:text-gray-900 transition">
+                    <svg v-if="shiftSortAsc" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                    </svg>
+                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                    {{ shiftSortAsc ? 'Augošā' : 'Dilstošā' }}
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Limit records -->
+              <div class="flex items-center gap-3">
+                <label class="text-sm font-medium text-gray-700">Rādīt ierakstus:</label>
+                <select v-model="limitCount" class="border border-gray-300 text-sm rounded-lg px-4 py-2 bg-white shadow-sm focus:ring-2 focus:ring-gray-500 focus:border-gray-500">
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                  <option value="9999">Visus</option>
+                </select>
               </div>
             </div>
 
@@ -588,24 +591,28 @@
                   <th class="px-6 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Uzvārds</th>
                   <th class="px-6 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Amats</th>
                   <th class="px-6 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Stundas</th>
+                  <th class="px-6 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Datums</th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="emp in filteredShiftStats" :key="emp.id" class="hover:bg-gray-50 transition-colors">
+                <tr v-for="(emp, index) in filteredShiftsByDate" :key="emp.id + '-' + (emp.start_time || index)" class="hover:bg-gray-50 transition-colors">
                   <td class="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">{{ emp.vards }}</td>
                   <td class="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">{{ emp.uzvards }}</td>
                   <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ emp.amats }}</td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
                       <div class="w-16 bg-gray-200 rounded-full h-2.5 mr-2">
-                        <div class="bg-blue-600 h-2.5 rounded-full" :style="{ width: `${Math.min(100, (emp.hours / 200) * 100)}%` }"></div>
+                        <div class="bg-gray-900 h-2.5 rounded-full" :style="{ width: `${Math.min(100, (emp.hours / 8) * 100)}%` }"></div>
                       </div>
                       <span class="text-sm font-semibold text-gray-900">{{ formatDuration(emp.hours) }}</span>
                     </div>
                   </td>
+                  <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
+                    {{ formatDate(emp.start_time) }}
+                  </td>
                 </tr>
-                <tr v-if="filteredShiftStats.length === 0">
-                  <td colspan="4" class="px-6 py-10 text-center text-sm text-gray-500">
+                <tr v-if="filteredShiftsByDate.length === 0">
+                  <td colspan="5" class="px-6 py-10 text-center text-sm text-gray-500">
                     <div class="flex flex-col items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300 mb-3">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -613,7 +620,7 @@
                         <line x1="8" y1="2" x2="8" y2="6"></line>
                         <line x1="3" y1="10" x2="21" y2="10"></line>
                       </svg>
-                      <p>Nav datu par maiņām</p>
+                      <p>Nav maiņu datu izvēlētajā periodā</p>
                     </div>
                   </td>
                 </tr>
@@ -629,12 +636,48 @@
                   v-model="searchMaterials"
                   type="text"
                   placeholder="Meklēt materiālus..."
-                  class="w-full px-4 py-2.5 pl-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-colors"
+                  class="w-full px-4 py-2.5 pl-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 shadow-sm transition-colors"
                 />
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-2.5 text-gray-400">
                   <circle cx="11" cy="11" r="8"></circle>
                   <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
+              </div>
+            </div>
+            
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 p-6">
+              <div class="flex items-center gap-3">
+                <label class="text-sm font-medium text-gray-700">Kārtot pēc:</label>
+                <div class="relative">
+                  <select v-model="sortKey" class="appearance-none border border-gray-300 text-sm rounded-lg px-4 py-2 pr-8 bg-white shadow-sm focus:ring-2 focus:ring-gray-500">
+                    <option value="">Nav</option>
+                    <option value="nosaukums">Nosaukums</option>
+                    <option value="daudzums">Daudzums</option>
+                  </select>
+                  <svg class="absolute right-2 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+
+                <button @click="sortAsc = !sortAsc" class="flex items-center text-sm text-gray-700 hover:text-gray-900 transition">
+                  <svg v-if="sortAsc" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                  </svg>
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                  {{ sortAsc ? 'Augošā' : 'Dilstošā' }}
+                </button>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <label class="text-sm font-medium text-gray-700">Rādīt ierakstus:</label>
+                <select v-model="limitCount" class="border border-gray-300 text-sm rounded-lg px-4 py-2 bg-white shadow-sm focus:ring-2 focus:ring-gray-500 focus:border-gray-500">
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                  <option value="9999">Visus</option>
+                </select>
               </div>
             </div>
 
@@ -652,23 +695,24 @@
               <tbody class="bg-white divide-y divide-gray-200">
                 <tr v-for="material in filteredMaterials" :key="material.id" class="hover:bg-gray-50 transition-colors">
                   <td class="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">{{ material.nosaukums }}</td>
-                  <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ material.daudzums }}</td>
+                  <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ material.daudzums.toLocaleString('lv-LV', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</td>
                   <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ material.vieniba }}</td>
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-3 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700">
+                    <span class="px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
                       {{ material.noliktava }}
                     </span>
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ material.vieta }}</td>
                   <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                     <div class="flex space-x-3">
-                      <button @click="openEditDialog('materials', material)" class="text-blue-600 hover:text-blue-800 font-medium transition-colors">Rediģēt</button>
+                      <button @click="openEditDialog('materials', material)" class="text-gray-700 hover:text-gray-900 font-medium transition-colors">Rediģēt</button>
+                      <button @click="openTransferDialog(material)" class="text-blue-600 hover:text-blue-800 font-medium transition-colors">Pārvietot</button>
                       <button @click="deleteMaterial(material.id)" class="text-red-600 hover:text-red-800 font-medium transition-colors">Dzēst</button>
                     </div>
                   </td>
                 </tr>
                 <tr v-if="materials.length === 0">
-                  <td colspan="7" class="px-6 py-10 text-center text-sm text-gray-500">
+                  <td colspan="6" class="px-6 py-10 text-center text-sm text-gray-500">
                     <div class="flex flex-col items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300 mb-3">
                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
@@ -676,7 +720,7 @@
                         <line x1="12" y1="22.08" x2="12" y2="12"></line>
                       </svg>
                       <p>Nav materiālu</p>
-                      <button @click="openAddDialog" class="mt-2 text-blue-600 hover:underline">Pievienot materiālu</button>
+                      <button @click="openAddDialog" class="mt-2 text-gray-700 hover:underline">Pievienot materiālu</button>
                     </div>
                   </td>
                 </tr>
@@ -692,12 +736,51 @@
                   v-model="searchWorkers"
                   type="text"
                   placeholder="Meklēt darbiniekus..."
-                  class="w-full px-4 py-2.5 pl-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-colors"
+                  class="w-full px-4 py-2.5 pl-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 shadow-sm transition-colors"
                 />
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-2.5 text-gray-400">
                   <circle cx="11" cy="11" r="8"></circle>
                   <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
+              </div>
+            </div>
+            
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 p-6">
+              <div class="flex items-center gap-3">
+                <label class="text-sm font-medium text-gray-700">Kārtot pēc:</label>
+                <div class="relative">
+                  <select v-model="sortKey" class="appearance-none border border-gray-300 text-sm rounded-lg px-4 py-2 pr-8 bg-white shadow-sm focus:ring-2 focus:ring-gray-500">
+                    <option value="">Nav</option>
+                    <option value="id">ID</option>
+                    <option value="vards">Vārds</option>
+                    <option value="uzvards">Uzvārds</option>
+                    <option value="amats">Amats</option>
+                    <option value="status">Statuss</option>
+                  </select>
+                  <svg class="absolute right-2 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+
+                <button @click="sortAsc = !sortAsc" class="flex items-center text-sm text-gray-700 hover:text-gray-900 transition">
+                  <svg v-if="sortAsc" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                  </svg>
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                  {{ sortAsc ? 'Augošā' : 'Dilstošā' }}
+                </button>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <label class="text-sm font-medium text-gray-700">Rādīt ierakstus:</label>
+                <select v-model="limitCount" class="border border-gray-300 text-sm rounded-lg px-4 py-2 bg-white shadow-sm focus:ring-2 focus:ring-gray-500 focus:border-gray-500">
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                  <option value="9999">Visus</option>
+                </select>
               </div>
             </div>
 
@@ -733,13 +816,13 @@
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                     <div class="flex space-x-3">
-                      <button @click="openEditDialog('workers', employee)" class="text-blue-600 hover:text-blue-800 font-medium transition-colors">Rediģēt</button>
+                      <button @click="openEditDialog('workers', employee)" class="text-gray-700 hover:text-gray-900 font-medium transition-colors">Rediģēt</button>
                       <button @click="deleteEmployee(employee.id)" class="text-red-600 hover:text-red-800 font-medium transition-colors">Dzēst</button>
                     </div>
                   </td>
                 </tr>
                 <tr v-if="employees.length === 0">
-                  <td colspan="7" class="px-6 py-10 text-center text-sm text-gray-500">
+                  <td colspan="6" class="px-6 py-10 text-center text-sm text-gray-500">
                     <div class="flex flex-col items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300 mb-3">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -748,7 +831,7 @@
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                       </svg>
                       <p>Nav darbinieku</p>
-                      <button @click="openAddDialog" class="mt-2 text-blue-600 hover:underline">Pievienot darbinieku</button>
+                      <button @click="openAddDialog" class="mt-2 text-gray-700 hover:underline">Pievienot darbinieku</button>
                     </div>
                   </td>
                 </tr>
@@ -758,18 +841,116 @@
 
           <!-- Statistics Tab -->
           <div v-if="currentTab === 'stats'" class="p-6">
-            <div class="mb-6">
-              <div class="relative max-w-md">
+            <!-- Header with additional export options -->
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+              <div class="relative max-w-md w-full">
                 <input
                   v-model="materialStatsSearchQuery"
                   type="text"
                   placeholder="Meklēt pēc materiāla nosaukuma..."
-                  class="w-full px-4 py-2.5 pl-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-colors"
+                  class="w-full px-4 py-2.5 pl-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 shadow-sm transition-colors"
                 />
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-2.5 text-gray-400">
                   <circle cx="11" cy="11" r="8"></circle>
                   <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
+              </div>
+              
+              <!-- Export Options -->
+              <div class="flex flex-wrap gap-2">
+                <button 
+                  @click="showChart = !showChart" 
+                  :class="[
+                    'inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors',
+                    showChart ? 'bg-gray-900 text-white' : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                  ]"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
+                    <path d="M3 3v18h18"></path>
+                    <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+                  </svg>
+                  {{ showChart ? 'Slēpt grafiku' : 'Rādīt grafiku' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Chart Section -->
+            <div v-if="showChart && filteredMaterialStats.length > 0" class="mb-8 bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Materiālu izmantošanas grafiks</h3>
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Pie Chart Representation -->
+                <div class="relative">
+                  <h4 class="text-sm font-medium text-gray-700 mb-3">Proporcijas</h4>
+                  <div class="space-y-2">
+                    <div v-for="(stat, index) in topMaterialStats" :key="stat.id" class="flex items-center">
+                      <div 
+                        class="w-4 h-4 rounded mr-3" 
+                        :style="{ backgroundColor: getChartColor(index) }"
+                      ></div>
+                      <span class="text-sm text-gray-700 flex-1">{{ stat.nosaukums }}</span>
+                      <span class="text-sm font-semibold text-gray-900">{{ stat.totalUsed }}</span>
+                      <span class="text-xs text-gray-500 ml-2">
+                        ({{ Math.round((stat.totalUsed / totalMaterialUsage) * 100) }}%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Bar Chart Representation -->
+                <div>
+                  <h4 class="text-sm font-medium text-gray-700 mb-3">Salīdzinājums</h4>
+                  <div class="space-y-3">
+                    <div v-for="(stat, index) in topMaterialStats" :key="stat.id" class="flex items-center">
+                      <div class="w-24 text-xs text-gray-600 truncate">{{ stat.nosaukums }}</div>
+                      <div class="flex-1 mx-3">
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            class="h-2 rounded-full transition-all duration-500" 
+                            :style="{ 
+                              width: `${(stat.totalUsed / maxMaterialUsage) * 100}%`,
+                              backgroundColor: getChartColor(index)
+                            }"
+                          ></div>
+                        </div>
+                      </div>
+                      <span class="text-sm font-semibold text-gray-900 w-8">{{ stat.totalUsed }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+                <div class="flex items-center">
+                  <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700">
+                      <path d="M12 20V10"></path>
+                      <path d="M18 20V4"></path>
+                      <path d="M6 20v-4"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <p class="text-sm text-gray-500">Kopā izmantojumi</p>
+                    <p class="text-xl font-bold text-gray-900">{{ totalMaterialUsage }}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+                <div class="flex items-center">
+                  <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="9" cy="7" r="4"></circle>
+                    </svg>
+                  </div>
+                  <div>
+                    <p class="text-sm text-gray-500">Populārākais</p>
+                    <p class="text-sm font-bold text-gray-900 truncate">{{ mostUsedMaterial?.nosaukums || 'Nav' }}</p>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -778,23 +959,31 @@
               <div v-for="stat in filteredMaterialStats" :key="stat.id" class="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
                 <div class="flex items-center justify-between mb-4">
                   <h3 class="font-medium text-gray-800 text-lg">{{ stat.nosaukums }}</h3>
-                  <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600">
+                  <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700">
                       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                       <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
                       <line x1="12" y1="22.08" x2="12" y2="12"></line>
                     </svg>
                   </div>
                 </div>
-                <p class="text-4xl font-bold text-blue-600">{{ stat.totalUsed }}</p>
+                <p class="text-4xl font-bold text-gray-900">{{ stat.totalUsed }}</p>
                 <div class="flex items-center mt-2">
                   <p class="text-sm text-gray-500">reizes pasūtījumos</p>
-                  <div v-if="totalMaterialUsage > 0" class="ml-auto px-2 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full">
+                  <div v-if="totalMaterialUsage > 0" class="ml-auto px-2 py-1 bg-gray-100 text-gray-800 text-xs font-semibold rounded-full">
                     {{ Math.round((stat.totalUsed / totalMaterialUsage) * 100) }}%
                   </div>
                 </div>
                 <div class="mt-4 w-full bg-gray-200 rounded-full h-1.5">
-                  <div class="bg-blue-600 h-1.5 rounded-full" :style="{ width: `${maxMaterialUsage > 0 ? (stat.totalUsed / maxMaterialUsage) * 100 : 0}%` }"></div>
+                  <div class="bg-gray-900 h-1.5 rounded-full" :style="{ width: `${maxMaterialUsage > 0 ? (stat.totalUsed / maxMaterialUsage) * 100 : 0}%` }"></div>
+                </div>
+                
+                <!-- Additional info -->
+                <div class="mt-4 pt-4 border-t border-gray-100">
+                  <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">Reitings:</span>
+                    <span class="font-medium text-gray-900">#{{ getRanking(stat) }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -839,6 +1028,14 @@
                 <span class="text-gray-900">{{ detailsData.daudzums }}</span>
               </div>
             </div>
+            <div>
+              <h3 class="font-medium text-gray-700 mb-2">Atbildīgais par pasūtījumu:</h3>
+              <p v-if="detailsData.employee" class="m-5 text-sm text-gray-800">
+                {{ detailsData.employee.vards }} {{ detailsData.employee.uzvards }}
+                <span v-if="detailsData.employee.amats">({{ detailsData.employee.amats }})</span>
+              </p>
+              <p v-else class="text-sm text-gray-500">Nav pievienota darbinieka.</p>
+            </div>
             
             <div class="mb-6">
               <h3 class="font-medium text-gray-700 mb-3">Materiāli:</h3>
@@ -850,7 +1047,7 @@
                   </div>
                   <span
                     class="font-semibold"
-                    :class="{ 'text-red-600': !hasEnoughMaterial(mat), 'text-blue-600': hasEnoughMaterial(mat) }"
+                    :class="{ 'text-red-600': !hasEnoughMaterial(mat), 'text-gray-900': hasEnoughMaterial(mat) }"
                   >
                     {{ mat.quantity }} x {{ detailsData.daudzums }} = {{ mat.quantity * detailsData.daudzums }}
                   </span>
@@ -864,11 +1061,44 @@
             <div class="flex justify-end">
               <button 
                 @click="closeDetailsDialog" 
-                class="px-4 py-2.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                class="px-4 py-2.5 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-lg shadow-sm hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
               >
                 Aizvērt
               </button>
             </div>
+          </div>
+        </div>
+
+        <!-- Transfer Material Dialog -->
+        <div v-if="showTransferDialog" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md">
+            <h2 class="text-xl font-semibold mb-6 text-gray-800">Pārvietot materiālu</h2>
+            <form @submit.prevent="transferMaterial">
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Materiāls</label>
+                <div class="font-medium">{{ transferData.nosaukums }}</div>
+              </div>
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">No noliktavas</label>
+                <div class="font-medium">{{ transferData.noliktava }}</div>
+              </div>
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Daudzums</label>
+                <input v-model.number="transferData.daudzums" type="number" min="0.01" :max="transferData.max" step="0.01"
+                  class="p-3 w-full border border-gray-300 rounded-lg" required />
+                <div class="text-xs text-gray-500 mt-1">Pieejams: {{ transferData.max }} {{ transferData.vieniba }}</div>
+              </div>
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Uz noliktavu</label>
+                <select v-model="transferData.toNoliktava" class="p-3 w-full border border-gray-300 rounded-lg" required>
+                  <option v-for="opt in warehouseOptions" :key="opt" :value="opt" :disabled="opt === transferData.noliktava">{{ opt }}</option>
+                </select>
+              </div>
+              <div class="flex justify-end gap-4 mt-6">
+                <button @click="showTransferDialog = false" type="button" class="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Atcelt</button>
+                <button type="submit" class="px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700">Pārvietot</button>
+              </div>
+            </form>
           </div>
         </div>
       </main>
@@ -878,9 +1108,10 @@
 
 <script setup>
 import axios from 'axios';
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch, h } from 'vue';
+import { showToast } from '../toast';
 
-// PDF библиотеки
+// PDF libraries
 const isPdfLibsLoading = ref(false);
 const isPdfLibsReady = ref(false);
 
@@ -896,17 +1127,39 @@ const initPdfLibs = async () => {
     isPdfLibsReady.value = true;
   } catch (error) {
     console.error('PDF ielādes kļūda:', error);
-    alert('Neizdevās ielādēt PDF funkcionalitāti!');
+    showToast('Neizdevās ielādēt PDF funkcionalitāti!', 'error');
   } finally {
     isPdfLibsLoading.value = false;
   }
 };
 
-onMounted(async () => {
-  await initPdfLibs();
-});
+// Sorting and filtering
+const sortKey = ref('');
+const sortAsc = ref(true);
+const limitCount = ref(50);
 
-// Табы
+// Separate sorting variables for shifts
+const shiftSortKey = ref('');
+const shiftSortAsc = ref(true);
+
+const sortByKey = (arr, key, ascending = true) => {
+  return [...arr].sort((a, b) => {
+    let valA = a[key];
+    let valB = b[key];
+    
+    // Handle dates
+    if (key === 'date') {
+      valA = new Date(valA);
+      valB = new Date(valB);
+    }
+    
+    if (valA < valB) return ascending ? -1 : 1;
+    if (valA > valB) return ascending ? 1 : -1;
+    return 0;
+  });
+};
+
+// Tabs
 const currentTab = ref('orders');
 const searchQuery = ref('');
 const searchMaterials = ref('');
@@ -915,7 +1168,7 @@ const shiftSearchQuery = ref('');
 const materialStatsSearchQuery = ref('');
 const materialSearch = ref('');
 
-// Диалоговые окна
+// Dialogs
 const showDetailsDialog = ref(false);
 const detailsData = ref({});
 const orderMaterials = ref([]);
@@ -925,7 +1178,7 @@ const editData = ref({});
 const materialStatsRaw = ref([]);
 const currentEditType = ref('');
 
-// Данные
+// Data
 const orders = ref([]);
 const materials = ref([]);
 const employees = ref([]);
@@ -933,561 +1186,98 @@ const shiftStats = ref([]);
 const periodStart = ref('');
 const periodEnd = ref('');
 
-
-// Формы
+// Forms
 const newOrder = ref({ nosaukums: '', daudzums: '', status: 'Nav sākts', materials: [] });
-const selectedMaterials = ref([{ id: '', quantity: 1 }]);
 const newMaterial = ref({ nosaukums: '', daudzums: '', vieniba: '', noliktava: '', vieta: '' });
 const newEmployee = ref({ vards: '', uzvards: '', amats: '', kods: '', status: 'Aktīvs' });
 
-// Вычисляемые свойства
-const filteredOrders = computed(() => {
-  return orders.value.filter(order =>
-    order.nosaukums.toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
-});
-
-const filteredMaterials = computed(() => {
+// Computed properties for filtering materials in search
+const filteredMaterialsForSearch = computed(() => {
+  if (!materialSearch.value) return [];
   return materials.value.filter(mat =>
     mat.nosaukums.toLowerCase().includes(materialSearch.value.toLowerCase())
   );
 });
 
+const filteredOrders = computed(() => {
+  let result = orders.value.filter(order =>
+    order.nosaukums.toLowerCase().includes(searchQuery.value.toLowerCase())
+  );
+  if (sortKey.value) result = sortByKey(result, sortKey.value, sortAsc.value);
+  return result.slice(0, limitCount.value);
+});
+
+const filteredMaterials = computed(() => {
+  let result = materials.value.filter(mat =>
+    mat.nosaukums.toLowerCase().includes(searchMaterials.value.toLowerCase())
+  );
+  if (sortKey.value) result = sortByKey(result, sortKey.value, sortAsc.value);
+  return result.slice(0, limitCount.value);
+});
+
 const filteredEmployees = computed(() => {
-  return employees.value.filter(emp =>
+  let result = employees.value.filter(emp =>
     emp.vards.toLowerCase().includes(searchWorkers.value.toLowerCase()) ||
     emp.uzvards.toLowerCase().includes(searchWorkers.value.toLowerCase())
   );
+  if (sortKey.value) result = sortByKey(result, sortKey.value, sortAsc.value);
+  return result.slice(0, limitCount.value);
 });
 
-const filteredShiftStats = computed(() => {
-  const search = shiftSearchQuery.value.toLowerCase();
-  return shiftStats.value.filter(emp => {
-    const vards = emp.vards?.toLowerCase() || '';
-    const uzvards = emp.uzvards?.toLowerCase() || '';
-    return vards.includes(search) || uzvards.includes(search);
-  });
-});
-
-// Статистика использования материалов
-const materialUsageStats = computed(() => materialStatsRaw.value);
 const filteredMaterialStats = computed(() => {
-  const search = materialStatsSearchQuery.value.toLowerCase();
-  if (!search) return materialUsageStats.value;
-  return materialUsageStats.value.filter(stat =>
-    stat.nosaukums.toLowerCase().includes(search)
+  let result = materialStatsRaw.value.filter(stat =>
+    stat.nosaukums.toLowerCase().includes(materialStatsSearchQuery.value.toLowerCase())
   );
+  if (sortKey.value) result = sortByKey(result, sortKey.value, sortAsc.value);
+  return result.slice(0, limitCount.value);
 });
 
 const totalMaterialUsage = computed(() => {
-  return materialUsageStats.value.reduce((sum, stat) => sum + stat.totalUsed, 0);
+  return materialStatsRaw.value.reduce((sum, stat) => sum + stat.totalUsed, 0);
 });
 
 const maxMaterialUsage = computed(() => {
-  return materialUsageStats.value.length ? Math.max(...materialUsageStats.value.map(stat => stat.totalUsed)) : 0;
+  return materialStatsRaw.value.length ? Math.max(...materialStatsRaw.value.map(stat => stat.totalUsed)) : 0;
 });
 
-// Загрузка данных
-const fetchOrders = async () => {
-  try {
-    const token = localStorage.getItem('authToken');
-    const response = await axios.get('http://127.0.0.1:5000/orders', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    orders.value = response.data;
-  } catch (error) {
-    console.error('Error fetching orders:', error);
-  }
-};
+const showChart = ref(false);
 
-const fetchMaterials = async () => {
-  try {
-    const token = localStorage.getItem('authToken');
-    const res = await axios.get('http://127.0.0.1:5000/materials', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    materials.value = res.data.materials;
-  } catch (e) {
-    console.error('Kļūda ielādējot materiālus:', e);
-  }
-};
-
-const fetchWorkers = async () => {
-  try {
-    const token = localStorage.getItem('authToken');
-    const response = await axios.get('http://127.0.0.1:5000/employees', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    employees.value = response.data.employees;
-  } catch (error) {
-    console.error('Error fetching employees:', error);
-  }
-};
-
-const fetchShiftStats = async () => {
-  try {
-    const token = localStorage.getItem('authToken');
-    const response = await axios.get('http://localhost:5000/api/shifts/stats', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    shiftStats.value = response.data;
-  } catch (error) {
-    console.error('Ошибка загрузки статистики:', error);
-  }
-};
-
-// Добавление записей
-const addOrder = async () => {
-  try {
-    const token = localStorage.getItem('authToken');
-    if (!newOrder.value.nosaukums || !newOrder.value.daudzums) {
-      alert('Aizpildiet visus laukus!');
-      return;
-    }
-    if (orderMaterials.value.length === 0) {
-      alert('Pievienojiet vismaz vienu materiālu!');
-      return;
-    }
-    const missing = orderMaterials.value.filter((mat) => {
-  const warehouseMaterial = materials.value.find(m => m.id === mat.id);
-  if (!warehouseMaterial) return true;
-  const totalRequired = Number(mat.quantity) * Number(newOrder.value.daudzums);
-  return totalRequired > Number(warehouseMaterial.daudzums);
+const topMaterialStats = computed(() => {
+  return [...filteredMaterialStats.value]
+    .sort((a, b) => b.totalUsed - a.totalUsed)
+    .slice(0, 10);
 });
 
-if (missing.length > 0) {
-  const missingNames = missing.map(m => m.nosaukums).join(', ');
-  alert(`Nav pietiekami materiālu noliktavā: ${missingNames}`);
-  return;
-}
-
-    const payload = {
-      ...newOrder.value,
-      materials: orderMaterials.value.map(mat => ({
-        material_id: mat.id,
-        quantity: mat.quantity
-      }))
-    };
-
-    await axios.post('http://127.0.0.1:5000/orders', payload, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    showAddDialog.value = false;
-    newOrder.value = { nosaukums: '', daudzums: '', status: 'Nav sākts' };
-    orderMaterials.value = [];
-    await fetchOrders();
-  } catch (err) {
-    alert(err.response?.data?.error || 'Kļūda pievienojot pasūtījumu.');
-    console.error(err);
-  }
-};
-
-const addMaterial = async () => {
-  try {
-    const token = localStorage.getItem('authToken');
-    const { nosaukums, noliktava, daudzums, vieniba, vieta } = newMaterial.value;
-
-    if (!nosaukums || !daudzums || !vieniba || !noliktava || !vieta) {
-      alert('Lūdzu, aizpildiet visus materiāla laukus!');
-      return;
-    }
-
-    if (!materials.value.length) {
-      await fetchMaterials();
-    }
-
-    const existingMaterial = materials.value.find(
-      mat => mat.nosaukums === nosaukums && mat.noliktava === noliktava
-    );
-
-    if (existingMaterial) {
-      const updatedMaterial = {
-        ...existingMaterial,
-        daudzums: Number(existingMaterial.daudzums) + Number(daudzums)
-      };
-      await axios.put(`http://127.0.0.1:5000/materials/${existingMaterial.id}`, updatedMaterial, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-    } else {
-      await axios.post('http://127.0.0.1:5000/materials', newMaterial.value, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-    }
-
-    await fetchMaterials();
-    showAddDialog.value = false;
-    newMaterial.value = { nosaukums: '', daudzums: '', vieniba: '', noliktava: '', vieta: '' };
-  } catch (error) {
-    console.error('Kļūda pievienojot materiālu:', error);
-    alert('Neizdevās pievienot vai atjaunināt materiālu!');
-  }
-};
-
-const fetchMaterialStats = async () => {
-  try {
-    const token = localStorage.getItem('authToken');
-    const response = await axios.get('http://127.0.0.1:5000/api/stats/materials', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    materialStatsRaw.value = response.data;
-  } catch (error) {
-    console.error('Kļūda ielādējot statistiku:', error);
-  }
-};
-
-const addEmployee = async () => {
-  try {
-    const token = localStorage.getItem('authToken');
-    const { vards, uzvards, amats, kods } = newEmployee.value;
-
-    if (!vards || !uzvards || !amats || !kods) {
-      alert('Lūdzu, aizpildiet visus laukus!');
-      return;
-    }
-
-    if (!employees.value.length) {
-      await fetchWorkers();
-    }
-
-    const enteredCode = String(kods).trim().toLowerCase();
-    const duplicateByCode = employees.value.find(emp =>
-      String(emp.kods).trim().toLowerCase() === enteredCode
-    );
-
-    if (duplicateByCode) {
-      alert(`Darbinieks ar šo kodu (${kods}) jau eksistē!`);
-      return;
-    }
-
-    const duplicateByName = employees.value.find(emp =>
-      emp.vards.trim().toLowerCase() === vards.trim().toLowerCase() &&
-      emp.uzvards.trim().toLowerCase() === uzvards.trim().toLowerCase()
-    );
-
-    if (duplicateByName) {
-      alert(`Darbinieks ar šo vārdu un uzvārdu (${vards} ${uzvards}) jau eksistē!`);
-      return;
-    }
-
-    await axios.post('http://127.0.0.1:5000/employees', newEmployee.value, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    await fetchWorkers();
-    showAddDialog.value = false;
-    newEmployee.value = { vards: '', uzvards: '', amats: '', kods: '', status: 'Aktīvs' };
-  } catch (error) {
-    console.error('Error adding employee:', error);
-    alert('Neizdevās pievienot darbinieku!');
-  }
-};
-
-// Редактирование
-const openEditDialog = (type, item) => {
-  currentEditType.value = type;
-
-  // Копируем основные данные
-  editData.value = { ...item };
-
-  // Если редактируем заказ — обработаем материалы
-  if (type === 'orders' && item.materials) {
-    editData.value.materials = item.materials.map(m => ({
-      ...m,
-      quantity: m.daudzums, // 👈 добавляем поле quantity
-    }));
-  }
-
-  editDialog.value = true;
-};
-
-const saveEdit = async () => {
-  try {
-    const token = localStorage.getItem('authToken');
-    const id = editData.value.id;
-
-    if (currentEditType.value === 'orders') {
-  // Проверка остатков...
-  const missing = editData.value.materials.filter((mat) => {
-    const warehouseMaterial = materials.value.find(m => m.id === mat.material_id || m.id === mat.id);
-    if (!warehouseMaterial) return true;
-    const totalRequired = Number(mat.quantity) * Number(editData.value.daudzums);
-    return totalRequired > Number(warehouseMaterial.daudzums);
-  });
-
-  if (missing.length > 0) {
-    const missingNames = missing.map(m => getMaterialName(m.material_id || m.id)).join(', ');
-    alert(`Nav pietiekami materiālu noliktavā: ${missingNames}`);
-    return;
-  }
-
-  const payload = {
-    nosaukums: editData.value.nosaukums,
-    daudzums: editData.value.daudzums,
-    status: editData.value.status,
-    materials: editData.value.materials.map(m => ({
-      material_id: m.material_id || m.id,
-      daudzums: m.quantity
-    }))
-  };
-
-  await axios.put(`http://127.0.0.1:5000/orders/${id}`, payload, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-
-      await fetchOrders();
-    } else if (currentEditType.value === 'materials') {
-      await axios.put(`http://127.0.0.1:5000/materials/${id}`, editData.value, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      await fetchMaterials();
-    } else if (currentEditType.value === 'workers') {
-      await axios.put(`http://127.0.0.1:5000/employees/${id}`, editData.value, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      await fetchWorkers();
-    }
-
-     editDialog.value = false;
-  } catch (error) {
-    console.error('Error saving edit:', error);
-    alert('Neizdevās saglabāt izmaiņas!');
-  }
-};
-
-const cancelEdit = () => {
-  editDialog.value = false;
-};
-
-// Удаление
-const deleteOrder = async (id) => {
-  try {
-    if (confirm('Vai tiešām vēlaties dzēst šo pasūtījumu?')) {
-      const token = localStorage.getItem('authToken');
-      await axios.delete(`http://127.0.0.1:5000/orders/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      await fetchOrders();
-    }
-  } catch (error) {
-    console.error('Error deleting order:', error);
-    alert('Neizdevās dzēst pasūtījumu!');
-  }
-};
-
-const deleteMaterial = async (id) => {
-  try {
-    if (confirm('Vai tiešām vēlaties dzēst šo materiālu?')) {
-      const token = localStorage.getItem('authToken');
-      await axios.delete(`http://127.0.0.1:5000/materials/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      await fetchMaterials();
-    }
-  } catch (error) {
-    console.error('Error deleting material:', error);
-    alert('Neizdevās dzēst materiālu!');
-  }
-};
-
-const deleteEmployee = async (id) => {
-  try {
-    if (confirm('Vai tiešām vēlaties dzēst šo darbinieku?')) {
-      const token = localStorage.getItem('authToken');
-      await axios.delete(`http://127.0.0.1:5000/employees/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      await fetchWorkers();
-    }
-  } catch (error) {
-    console.error('Error deleting employee:', error);
-    alert('Neizdevās dzēst darbinieku!');
-  }
-};
-
-// Экспорт в PDF
-const filteredOrdersByDate = computed(() => {
-  if (!periodStart.value || !periodEnd.value) return orders.value;
-  const start = new Date(periodStart.value);
-  const end = new Date(periodEnd.value);
-  return orders.value.filter(o => {
-    const date = new Date(o.created_at);
-    return date >= start && date <= end;
-  });
+const mostUsedMaterial = computed(() => {
+  return filteredMaterialStats.value.length > 0 
+    ? filteredMaterialStats.value.reduce((max, stat) => 
+        stat.totalUsed > max.totalUsed ? stat : max
+      )
+    : null;
 });
 
-const filteredShiftsByDate = computed(() => {
-  if (!periodStart.value || !periodEnd.value) return shiftStats.value;
-  const start = new Date(periodStart.value);
-  const end = new Date(periodEnd.value);
-  return shiftStats.value.filter(s => {
-    const date = new Date(s.date); // замените на фактическое поле даты
-    return date >= start && date <= end;
-  });
-});
-
-const filteredStatsByDate = computed(() => {
-  if (!periodStart.value || !periodEnd.value) return materialStatsRaw.value;
-  const start = new Date(periodStart.value);
-  const end = new Date(periodEnd.value);
-  return materialStatsRaw.value.filter(s => {
-    const date = new Date(s.date); // замените на фактическое поле
-    return date >= start && date <= end;
-  });
-});
-
-const exportToPDF = async () => {
-  if (!isPdfLibsReady.value) {
-    alert('Lūdzu, gaidiet, kamēr tiks ielādētas PDF bibliotēkas!');
-    return;
-  }
-
-  try {
-    const doc = new window.jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
-
-    // Шрифты
-    doc.addFont('https://cdn.jsdelivr.net/npm/roboto-font@0.1.0/fonts/Roboto/roboto-regular-webfont.ttf', 'Roboto', 'normal');
-    doc.addFont('https://cdn.jsdelivr.net/npm/roboto-font@0.1.0/fonts/Roboto/roboto-bold-webfont.ttf', 'Roboto', 'bold');
-
-    const currentDate = new Date().toLocaleDateString('lv-LV');
-
-    const normalizeText = (str) => str.replace(/\+/g, 'ī').replace(/\s+/g, ' ').trim();
-
-    let columns = [];
-    let tableData = [];
-
-    switch (currentTab.value) {
-      case 'workers':
-        columns = ['ID', 'Vārds', 'Uzvārds', 'Amats', 'Kods', 'Statuss'];
-        tableData = employees.value.map(e => [
-          e.id,
-          normalizeText(e.vards),
-          normalizeText(e.uzvards),
-          normalizeText(e.amats),
-          e.kods,
-          e.status
-        ]);
-        break;
-
-      case 'shifts':
-      columns = ['ID', 'Vārds', 'Uzvārds', 'Stundas'];
-      tableData = filteredShiftsByDate.value.map(s => [
-        s.id,
-        normalizeText(s.vards),
-        normalizeText(s.uzvards),
-        s.hours
-      ]);
-      break;
-
-      case 'orders':
-        columns = ['ID', 'Nosaukums', 'Daudzums', 'Statuss', 'Datums'];
-        tableData = filteredOrdersByDate.value
-          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-          .map(o => [
-            o.id,
-            normalizeText(o.nosaukums),
-            o.daudzums,
-            normalizeText(o.status),
-            new Date(o.created_at).toLocaleDateString('lv-LV')
-          ]);
-        break;
-
-
-
-      case 'materials':
-        columns = ['ID', 'Materiāla nosaukums', 'Daudzums', 'Vienība', 'Noliktava', 'Vieta'];
-        tableData = materials.value.map(m => [
-          m.id,
-          normalizeText(m.nosaukums),
-          m.daudzums,
-          m.vieniba,
-          normalizeText(m.noliktava),
-          normalizeText(m.vieta)
-        ]);
-        break;
-        
-      case 'stats':
-        columns = ['Materiāla nosaukums', 'Izmantots pasūtījumos'];
-        tableData = materialUsageStats.value.map(s => [
-          normalizeText(s.nosaukums),
-          s.totalUsed
-        ]);
-        break;
-    }
-
-    doc.setFont('Roboto', 'normal');
-    doc.setFontSize(16);
-    doc.setTextColor(40, 62, 104);
-    
-    let title = '';
-    switch (currentTab.value) {
-      case 'orders': title = 'PASŪTĪJUMI'; break;
-      case 'materials': title = 'MATERIĀLI'; break;
-      case 'workers': title = 'DARBINIEKI'; break;
-      case 'shifts': title = 'MAIŅU STATISTIKA'; break;
-      case 'stats': title = 'MATERIĀLU STATISTIKA'; break;
-      default: title = currentTab.value.toUpperCase();
-    }
-    
-    doc.text(`${title} (${currentDate})`, 15, 20);
-
-    window.autoTable(doc, {
-      head: [columns],
-      body: tableData,
-      startY: 30,
-      theme: 'grid',
-      styles: {
-        font: 'Roboto',
-        fontSize: 10,
-        cellPadding: 2,
-        overflow: 'linebreak',
-        textColor: [51, 51, 51],
-        lineColor: [221, 221, 221]
-      },
-      headStyles: {
-        fontStyle: 'bold',
-        fillColor: [40, 62, 104],
-        textColor: 255
-      },
-      columnStyles: {
-        0: { cellWidth: 20 },
-        1: { cellWidth: 40 },
-        2: { cellWidth: 30 },
-        3: { cellWidth: 30 }
-      },
-      didParseCell: data => {
-        data.cell.styles.font = 'Roboto';
-      }
-    });
-
-    doc.save(`${currentTab.value}_${currentDate}.pdf`);
-  } catch (error) {
-    console.error('PDF kļūda:', error);
-    alert('Radās kļūda eksportējot PDF!');
-  }
+const getChartColor = (index) => {
+  const colors = [
+    '#374151', '#6B7280', '#9CA3AF', '#D1D5DB', '#F3F4F6',
+    '#1F2937', '#4B5563', '#111827', '#030712', '#F9FAFB'
+  ];
+  return colors[index % colors.length];
 };
 
-// Открытие деталей
+const getRanking = (stat) => {
+  const sorted = [...materialStatsRaw.value].sort((a, b) => b.totalUsed - a.totalUsed);
+  return sorted.findIndex(s => s.id === stat.id) + 1;
+};
+
+// Details dialog
 const openDetailsDialog = async (order) => {
   try {
     const token = localStorage.getItem('authToken');
 
-    // загружаем детали заказа
     const res = await axios.get(`http://127.0.0.1:5000/orders/${order.id}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
 
-    // загружаем материалы (если ещё не были загружены)
     if (!materials.value.length) {
       await fetchMaterials();
     }
@@ -1496,29 +1286,46 @@ const openDetailsDialog = async (order) => {
     showDetailsDialog.value = true;
   } catch (err) {
     console.error("Kļūda saņemot detaļas:", err);
-    alert("Neizdevās ielādēt pasūtījuma detaļas!");
+    showToast("Neizdevās ielādēt pasūtījuma detaļas!", 'error');
   }
 };
-
-
 
 const closeDetailsDialog = () => {
   showDetailsDialog.value = false;
 };
 
-// Открытие добавления
+// Add dialog
+const closeAddDialog = () => {
+  showAddDialog.value = false;
+  materialSearch.value = '';
+  
+  // Reset form data
+  if (currentTab.value === 'orders') {
+    newOrder.value = { nosaukums: '', daudzums: '', status: 'Nav sākts' };
+    orderMaterials.value = [];
+  } else if (currentTab.value === 'materials') {
+    newMaterial.value = { nosaukums: '', daudzums: '', vieniba: '', noliktava: 'Balta noliktava', vieta: '' };
+  } else if (currentTab.value === 'workers') {
+    newEmployee.value = { vards: '', uzvards: '', amats: 'Šuvēja', kods: '', status: 'Aktīvs' };
+  }
+};
+
 const openAddDialog = () => {
   showAddDialog.value = true;
-  
+  materialSearch.value = '';
+  currentEditType.value = currentTab.value;
+
+  // Initialize form data based on current tab
   if (currentTab.value === 'orders') {
     orderMaterials.value = [];
     newOrder.value = { nosaukums: '', daudzums: '', status: 'Nav sākts' };
   } else if (currentTab.value === 'materials') {
-    newMaterial.value = { nosaukums: '', daudzums: '', vieniba: '', noliktava: 'Galvenā noliktava', vieta: '' };
+    newMaterial.value = { nosaukums: '', daudzums: '', vieniba: '', noliktava: 'Balta noliktava', vieta: '' };
   } else if (currentTab.value === 'workers') {
-    newEmployee.value = { vards: '', uzvards: '', amats: '', kods: '', status: 'Aktīvs' };
+    newEmployee.value = { vards: '', uzvards: '', amats: 'Šuvēja', kods: '', status: 'Aktīvs' };
   }
 };
+
 const addMaterialToEdit = (material) => {
   if (!editData.value.materials) {
     editData.value.materials = [];
@@ -1539,10 +1346,10 @@ const addMaterialToEdit = (material) => {
   materialSearch.value = '';
 };
 
-// Работа с материалами в заказе
+// Material order functions
 const addMaterialToOrder = (material) => {
   const existingIndex = orderMaterials.value.findIndex(m => m.id === material.id);
-  
+
   if (existingIndex !== -1) {
     orderMaterials.value[existingIndex].quantity++;
   } else {
@@ -1553,7 +1360,7 @@ const addMaterialToOrder = (material) => {
       vieniba: material.vieniba
     });
   }
-  
+
   materialSearch.value = '';
 };
 
@@ -1561,7 +1368,7 @@ const removeMaterialFromOrder = (index) => {
   orderMaterials.value.splice(index, 1);
 };
 
-// Вспомогательные функции
+// Helper functions
 const getMaterialName = (materialId) => {
   const material = materials.value.find(m => m.id === materialId);
   return material ? material.nosaukums : 'Nezināms materiāls';
@@ -1571,7 +1378,6 @@ const getMaterialUnit = (materialId) => {
   const material = materials.value.find(m => m.id === materialId);
   return material ? material.vieniba : '';
 };
-
 
 const hasEnoughMaterial = (mat) => {
   const material = materials.value.find(m => m.id === mat.material_id);
@@ -1587,12 +1393,560 @@ const formatDuration = (hours) => {
   return `${h}h ${m}min`;
 };
 
-// Загрузка при монтировании
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('lv-LV', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return '';
+  }
+};
+
+// Load on mount
 onMounted(async () => {
+  await initPdfLibs();
   await fetchOrders();
   await fetchMaterials();
   await fetchShiftStats();
   await fetchWorkers();
   await fetchMaterialStats();
 });
+
+// Watch for period changes and automatically update data
+watch([periodStart, periodEnd], () => {
+  if (currentTab.value === 'shifts') {
+    fetchShiftStats();
+  }
+});
+
+// API calls
+const fetchOrders = async () => {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await axios.get('http://127.0.0.1:5000/orders', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    orders.value = response.data;
+  } catch (error) {
+    handleError(error, 'Neizdevās ielādēt pasūtījumus. Lūdzu, mēģiniet vēlreiz.');
+  }
+};
+
+const fetchMaterials = async () => {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await axios.get('http://127.0.0.1:5000/materials', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    materials.value = response.data.materials;
+  } catch (error) {
+    handleError(error, 'Neizdevās ielādēt materiālus. Lūdzu, mēģiniet vēlreiz.');
+  }
+};
+
+const fetchWorkers = async () => {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await axios.get('http://127.0.0.1:5000/employees', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    employees.value = response.data.employees;
+  } catch (error) {
+    handleError(error, 'Neizdevās ielādēt darbiniekus. Lūdzu, mēģiniet vēlreiz.');
+  }
+};
+
+const fetchShiftStats = async () => {
+  try {
+    const token = localStorage.getItem('authToken');
+    const params = {};
+    if (periodStart.value) {
+      params.start = `${periodStart.value}T00:00:00`;
+    }
+    if (periodEnd.value) {
+      params.end = `${periodEnd.value}T23:59:59`;
+    }
+
+    const response = await axios.get('http://localhost:5000/api/shifts/stats', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      params: params,
+    });
+    shiftStats.value = response.data;
+  } catch (error) {
+    handleError(error, 'Neizdevās ielādēt maiņu statistiku. Lūdzu, mēģiniet vēlreiz.');
+  }
+};
+
+const fetchMaterialStats = async () => {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await axios.get('http://127.0.0.1:5000/api/stats/materials', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    materialStatsRaw.value = response.data;
+  } catch (error) {
+    handleError(error, 'Neizdevās ielādēt materiālu statistiku. Lūdzu, mēģiniet vēlreiz.');
+  }
+};
+
+// Add functions
+const addOrder = async () => {
+  try {
+    const token = localStorage.getItem('authToken');
+    const materialsToSend = orderMaterials.value.map(mat => ({
+      id: mat.id,
+      daudzums: mat.quantity
+    }));
+
+    await axios.post('http://127.0.0.1:5000/orders', {
+      ...newOrder.value,
+      materials: materialsToSend
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    showAddDialog.value = false;
+    await fetchOrders();
+    newOrder.value = { nosaukums: '', daudzums: '', status: 'Nav sākts' };
+    orderMaterials.value = [];
+    showToast('Pasūtījums ir veiksmīgi pievienots sistēmā!', 'success');
+  } catch (error) {
+    handleError(error, 'Neizdevās pievienot pasūtījumu. Lūdzu, pārbaudiet ievadītos datus un pārliecinieties, ka visi materiāli ir pieejami.');
+  }
+};
+
+const addMaterial = async () => {
+  try {
+    const token = localStorage.getItem('authToken');
+    await axios.post('http://127.0.0.1:5000/materials', newMaterial.value, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    showAddDialog.value = false;
+    await fetchMaterials();
+    newMaterial.value = { nosaukums: '', daudzums: '', vieniba: '', noliktava: '', vieta: '' };
+    showToast('Materiāls ir veiksmīgi pievienots sistēmā!', 'success');
+  } catch (error) {
+    handleError(error, 'Neizdevās pievienot materiālu. Lūdzu, pārbaudiet ievadītos datus un pārliecinieties, ka materiāls ar šādu nosaukumu vēl neeksistē.');
+  }
+};
+
+const addEmployee = async () => {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await axios.get('http://127.0.0.1:5000/employees', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const duplicateCode = response.data.employees.find(e => Number(e.kods) === Number(newEmployee.value.kods));
+    if (duplicateCode) {
+      showToast('Darbinieks ar šādu kodu jau eksistē sistēmā. Lūdzu, izmantojiet citu kodu.', 'error');
+      return;
+    }
+
+    const duplicateName = response.data.employees.find(e => 
+      e.vards.toLowerCase() === newEmployee.value.vards.toLowerCase() && 
+      e.uzvards.toLowerCase() === newEmployee.value.uzvards.toLowerCase()
+    );
+    if (duplicateName) {
+      showToast('Darbinieks ar šādu vārdu un uzvārdu jau eksistē sistēmā. Lūdzu, pārbaudiet ievadītos datus.', 'error');
+      return;
+    }
+
+    await axios.post('http://127.0.0.1:5000/employees', newEmployee.value, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    showAddDialog.value = false;
+    await fetchWorkers();
+    newEmployee.value = { vards: '', uzvards: '', amats: '', kods: '', status: 'Aktīvs' };
+    showToast('Darbinieks ir veiksmīgi pievienots sistēmā!', 'success');
+  } catch (error) {
+    handleError(error, 'Neizdevās pievienot darbinieku. Lūdzu, pārbaudiet ievadītos datus un pārliecinieties, ka visi obligātie lauki ir aizpildīti.');
+  }
+};
+
+// Edit functions
+const openEditDialog = async (type, item) => {
+  currentEditType.value = type;
+  editData.value = { ...item };
+  editDialog.value = true;
+  materialSearch.value = '';
+
+  if (type === 'orders') {
+    try {
+      const token = localStorage.getItem('authToken');
+      const res = await axios.get(`http://127.0.0.1:5000/orders/${item.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      editData.value = res.data;
+    } catch (err) {
+      console.error("Kļūda saņemot detaļas:", err);
+      showToast("Neizdevās ielādēt pasūtījuma detaļas!", 'error');
+    }
+  }
+};
+
+const saveEdit = async () => {
+  try {
+    const token = localStorage.getItem('authToken');
+    let url;
+    if (currentEditType.value === 'orders') {
+      url = `http://127.0.0.1:5000/orders/${editData.value.id}`;
+    } else if (currentEditType.value === 'materials') {
+      url = `http://127.0.0.1:5000/materials/${editData.value.id}`;
+    } else if (currentEditType.value === 'workers') {
+      url = `http://127.0.0.1:5000/employees/${editData.value.id}`;
+    }
+
+    let data = { ...editData.value };
+
+    if (currentEditType.value === 'workers' && !showPasswordChange.value) {
+      delete data.password;
+    }
+
+    if (currentEditType.value === 'orders') {
+      const materialsToSend = editData.value.materials.map(m => ({
+        material_id: m.material_id || m.id,
+        daudzums: m.quantity || 1
+      }));
+      data.materials = materialsToSend;
+    }
+
+    await axios.put(url, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    // Tikai ja nav kļūdas:
+    editDialog.value = false;
+    showPasswordChange.value = false;
+    if (currentEditType.value === 'orders') {
+      await fetchOrders();
+    } else if (currentEditType.value === 'materials') {
+      await fetchMaterials();
+    } else if (currentEditType.value === 'workers') {
+      await fetchWorkers();
+    }
+    showActionToast('Izmaiņas ir veiksmīgi saglabātas sistēmā!', 'success');
+  } catch (error) {
+    // NEaizver editDialog, NErādi success toast
+    handleError(error, 'Neizdevās saglabāt izmaiņas. Lūdzu, pārbaudiet ievadītos datus un pārliecinieties, ka visi obligātie lauki ir aizpildīti.');
+  }
+};
+
+const cancelEdit = () => {
+  editDialog.value = false;
+  showPasswordChange.value = false;
+};
+
+// Delete functions
+const deleteOrder = async (id) => {
+  showDeleteToast('Vai tiešām vēlaties dzēst šo pasūtījumu? Šo darbību nevarēs atsaukt.', async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      await axios.delete(`http://127.0.0.1:5000/orders/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await fetchOrders();
+      showActionToast('Pasūtījums ir veiksmīgi dzēsts no sistēmas!', 'success');
+    } catch (error) {
+      handleError(error, 'Neizdevās dzēst pasūtījumu. Lūdzu, pārbaudiet, vai pasūtījums nav jau pabeigts vai procesā.');
+    }
+  });
+};
+
+const deleteMaterial = async (id) => {
+  showDeleteToast('Vai tiešām vēlaties dzēst šo materiālu? Šo darbību nevarēs atsaukt.', async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      await axios.delete(`http://127.0.0.1:5000/materials/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await fetchMaterials();
+      showActionToast('Materiāls ir veiksmīgi dzēsts no sistēmas!', 'success');
+    } catch (error) {
+      handleError(error, 'Neizdevās dzēst materiālu. Lūdzu, pārbaudiet, vai materiāls nav izmantots kādā aktīvā pasūtījumā.');
+    }
+  });
+};
+
+const deleteEmployee = async (id) => {
+  showDeleteToast('Vai tiešām vēlaties dzēst šo darbinieku? Šo darbību nevarēs atsaukt.', async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      await axios.delete(`http://127.0.0.1:5000/employees/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await fetchWorkers();
+      showActionToast('Darbinieks ir veiksmīgi dzēsts no sistēmas!', 'success');
+    } catch (error) {
+      handleError(error, 'Neizdevās dzēst darbinieku. Lūdzu, pārbaudiet, vai darbinieks nav piešķirts kādam aktīvam pasūtījumam.');
+    }
+  });
+};
+
+const applyDateFilter = () => {
+  fetchShiftStats();
+};
+
+const filteredShiftsByDate = computed(() => {
+  let result = shiftStats.value;
+
+  if (shiftSearchQuery.value) {
+    result = result.filter(emp =>
+      emp.vards.toLowerCase().includes(shiftSearchQuery.value.toLowerCase()) ||
+      emp.uzvards.toLowerCase().includes(shiftSearchQuery.value.toLowerCase())
+    );
+  }
+
+  if (shiftSortKey.value) {
+    result = sortByKey(result, shiftSortKey.value, shiftSortAsc.value);
+  }
+
+  return result.map(emp => ({
+    ...emp,
+    formattedDate: new Date(emp.start_time).toLocaleDateString('lv-LV', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  })).slice(0, limitCount.value);
+});
+
+async function exportToPDF() {
+  try {
+    if (!isPdfLibsReady.value) {
+      showToast('PDF bibliotēkas vēl nav ielādētas. Lūdzu, uzgaidiet, kamēr tās tiks ielādētas.', 'error');
+      return;
+    }
+
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      showToast('Jūsu sesija ir beigusies. Lūdzu, ielogojieties sistēmā vēlreiz.', 'error');
+      return;
+    }
+
+    const params = {
+      type: currentTab.value
+    };
+
+    if (currentTab.value === 'shifts') {
+      if (periodStart.value && periodEnd.value) {
+        params.start_date = periodStart.value;
+        params.end_date = periodEnd.value;
+      }
+    }
+
+    const response = await axios.get('http://127.0.0.1:5000/api/export_pdf', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/pdf'
+      },
+      params: params,
+      responseType: 'blob'
+    });
+
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${currentTab.value}_atskaite.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    handleError(error, 'Neizdevās eksportēt PDF. Lūdzu, mēģiniet vēlreiz.');
+  }
+}
+
+// Add new computed properties and methods for form handling
+const updateValue = (event, field) => {
+  const value = event.target.value;
+  if (editDialog.value) {
+    editData.value[field] = value;
+  } else {
+    if (currentTab.value === 'orders') {
+      newOrder.value[field] = value;
+    } else if (currentTab.value === 'materials') {
+      newMaterial.value[field] = value;
+    } else if (currentTab.value === 'workers') {
+      newEmployee.value[field] = value;
+    }
+  }
+};
+
+// Add these computed properties to help with form visibility
+const showOrderForm = computed(() => showAddDialog.value && currentTab.value === 'orders');
+const showMaterialForm = computed(() => showAddDialog.value && currentTab.value === 'materials');
+const showWorkerForm = computed(() => showAddDialog.value && currentTab.value === 'workers');
+
+const showPasswordChange = ref(false);
+
+// Add this function at the beginning of the script section
+const handleError = (error, defaultMessage) => {
+  let msg = defaultMessage;
+  if (error.response?.data?.error) {
+    msg = error.response.data.error;
+  } else if (error.response?.data?.message) {
+    msg = error.response.data.message;
+  } else if (typeof error.response?.data === 'string') {
+    msg = error.response.data;
+  }
+
+  // Ja kļūda ir par materiāla trūkumu, piedāvā iestatīt maksimālo daudzumu ar smuku toast
+  const match = msg.match(/Nepietiek materiāla: (.*), nepieciešams ([0-9.]+), ir tikai ([0-9.]+)/i);
+  if (match) {
+    const materialName = match[1];
+    const required = parseFloat(match[2]);
+    const available = parseFloat(match[3]);
+    const mat = orderMaterials.value.find(m => getMaterialName(m.id) === materialName);
+    if (mat && mat.quantity > 0) {
+      const maxQty = Math.floor(available / mat.quantity);
+      if (maxQty > 0) {
+        showToast(
+          '',
+          'error',
+          10000,
+          () => h('div', [
+            h('div', `Materiāla “${materialName}” pietiek tikai pasūtījuma daudzumam ${maxQty}.`),
+            h('div', { style: 'margin-top: 10px; display: flex; gap: 10px;' }, [
+              h('button', {
+                style: 'background:#fff;color:#1f2937;padding:6px 16px;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;transition:background 0.2s;',
+                onMouseover: e => e.target.style.background = '#f3f4f6',
+                onMouseout: e => e.target.style.background = '#fff',
+                onClick: () => {
+                  newOrder.value.daudzums = maxQty;
+                  document.body.querySelectorAll('.toast').forEach(el => el.remove());
+                }
+              }, 'Iestatīt uz ' + maxQty),
+              h('button', {
+                style: 'background:#fff;color:#1f2937;padding:6px 16px;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;transition:background 0.2s;',
+                onMouseover: e => e.target.style.background = '#f3f4f6',
+                onMouseout: e => e.target.style.background = '#fff',
+                onClick: () => {
+                  document.body.querySelectorAll('.toast').forEach(el => el.remove());
+                }
+              }, 'Atcelt')
+            ])
+          ])
+        );
+      } else {
+        showToast(`Materiāla “${materialName}” nepietiek nevienam pasūtījumam.`, 'error');
+      }
+      return;
+    }
+  }
+  showToast(msg, 'error');
+};
+
+function showActionToast(message, type = 'info', buttonText = null, onButton = null) {
+  // Ja nav buttonText, rāda tikai tekstu, bez pogas
+  if (!buttonText) {
+    showToast(message, type);
+    return;
+  }
+  showToast(
+    '',
+    type,
+    7000,
+    () => h('div', [
+      h('div', message),
+      h('div', { style: 'margin-top: 10px; display: flex; gap: 10px;' }, [
+        h('button', {
+          style: 'background:#fff;color:#1f2937;padding:6px 16px;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;transition:background 0.2s;',
+          onMouseover: e => e.target.style.background = '#f3f4f6',
+          onMouseout: e => e.target.style.background = '#fff',
+          onClick: () => {
+            if (onButton) onButton();
+            document.body.querySelectorAll('.toast').forEach(el => el.remove());
+          }
+        }, buttonText)
+      ])
+    ])
+  );
+}
+
+function showDeleteToast(message, onConfirm) {
+  showToast(
+    '',
+    'error',
+    10000,
+    () => h('div', [
+      h('div', message),
+      h('div', { style: 'margin-top: 10px; display: flex; gap: 10px;' }, [
+        h('button', {
+          style: 'background:#fff;color:#1f2937;padding:6px 16px;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;transition:background 0.2s;',
+          onMouseover: e => e.target.style.background = '#f3f4f6',
+          onMouseout: e => e.target.style.background = '#fff',
+          onClick: () => {
+            onConfirm();
+            document.body.querySelectorAll('.toast').forEach(el => el.remove());
+          }
+        }, 'Jā, dzēst'),
+        h('button', {
+          style: 'background:#1f2937;color:#fff;padding:6px 16px;border:none;border-radius:6px;cursor:pointer;transition:background 0.2s;',
+          onMouseover: e => e.target.style.background = '#111827',
+          onMouseout: e => e.target.style.background = '#1f2937',
+          onClick: () => {
+            document.body.querySelectorAll('.toast').forEach(el => el.remove());
+          }
+        }, 'Atcelt')
+      ])
+    ])
+  );
+}
+
+const showTransferDialog = ref(false);
+const transferData = ref({
+  id: null,
+  nosaukums: '',
+  noliktava: '',
+  vieniba: '',
+  daudzums: 0,
+  max: 0,
+  toNoliktava: ''
+});
+const warehouseOptions = ['Balta noliktava', 'Centrālā noliktava'];
+
+function openTransferDialog(material) {
+  transferData.value = {
+    id: material.id,
+    nosaukums: material.nosaukums,
+    noliktava: material.noliktava,
+    vieniba: material.vieniba,
+    daudzums: 0,
+    max: material.daudzums,
+    toNoliktava: warehouseOptions.find(opt => opt !== material.noliktava)
+  };
+  showTransferDialog.value = true;
+}
+
+async function transferMaterial() {
+  try {
+    const token = localStorage.getItem('authToken');
+    await axios.post('http://127.0.0.1:5000/materials/transfer', {
+      material_id: transferData.value.id,
+      daudzums: transferData.value.daudzums,
+      from_noliktava: transferData.value.noliktava,
+      to_noliktava: transferData.value.toNoliktava
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    showTransferDialog.value = false;
+    await fetchMaterials();
+    showToast('Materiāls veiksmīgi pārvietots!', 'success');
+  } catch (error) {
+    handleError(error, 'Neizdevās pārvietot materiālu. Lūdzu, pārbaudiet datus.');
+  }
+}
+
 </script>

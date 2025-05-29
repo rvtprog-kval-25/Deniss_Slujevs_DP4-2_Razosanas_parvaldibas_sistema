@@ -19,6 +19,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     ShiftsTab: typeof import('./components/admin/tabs/ShiftsTab.vue')['default']
+    Toast: typeof import('./components/Toast.vue')['default']
     WorkerTab: typeof import('./components/admin/tabs/WorkerTab.vue')['default']
   }
 }
