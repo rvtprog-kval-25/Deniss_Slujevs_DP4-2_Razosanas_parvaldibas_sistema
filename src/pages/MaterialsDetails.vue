@@ -76,7 +76,7 @@ const fetchMaterial = async () => {
       throw new Error("Нет токена. Пожалуйста, авторизуйтесь.");
     }
 
-    const response = await fetch(`http://127.0.0.1:5000/materials/${materialId}`, {
+    const response = await fetch(`https://kvdarbsbackend.vercel.app/materials/${materialId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,

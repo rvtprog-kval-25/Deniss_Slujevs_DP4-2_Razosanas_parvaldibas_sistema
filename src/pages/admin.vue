@@ -1274,7 +1274,7 @@ const openDetailsDialog = async (order) => {
   try {
     const token = localStorage.getItem('authToken');
 
-    const res = await axios.get(`http://127.0.0.1:5000/orders/${order.id}`, {
+    const res = await axios.get(`https://kvdarbsbackend.vercel.app/orders/${order.id}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
 
@@ -1430,7 +1430,7 @@ watch([periodStart, periodEnd], () => {
 const fetchOrders = async () => {
   try {
     const token = localStorage.getItem('authToken');
-    const response = await axios.get('http://127.0.0.1:5000/orders', {
+    const response = await axios.get('https://kvdarbsbackend.vercel.app/orders', {
       headers: { Authorization: `Bearer ${token}` }
     });
     orders.value = response.data;
@@ -1442,7 +1442,7 @@ const fetchOrders = async () => {
 const fetchMaterials = async () => {
   try {
     const token = localStorage.getItem('authToken');
-    const response = await axios.get('http://127.0.0.1:5000/materials', {
+    const response = await axios.get('https://kvdarbsbackend.vercel.app/materials', {
       headers: { Authorization: `Bearer ${token}` }
     });
     materials.value = response.data.materials;
@@ -1454,7 +1454,7 @@ const fetchMaterials = async () => {
 const fetchWorkers = async () => {
   try {
     const token = localStorage.getItem('authToken');
-    const response = await axios.get('http://127.0.0.1:5000/employees', {
+    const response = await axios.get('https://kvdarbsbackend.vercel.app/employees', {
       headers: { Authorization: `Bearer ${token}` }
     });
     employees.value = response.data.employees;
@@ -1489,7 +1489,7 @@ const fetchShiftStats = async () => {
 const fetchMaterialStats = async () => {
   try {
     const token = localStorage.getItem('authToken');
-    const response = await axios.get('http://127.0.0.1:5000/api/stats/materials', {
+    const response = await axios.get('https://kvdarbsbackend.vercel.app/api/stats/materials', {
       headers: { Authorization: `Bearer ${token}` }
     });
     materialStatsRaw.value = response.data;
@@ -1507,7 +1507,7 @@ const addOrder = async () => {
       daudzums: mat.quantity
     }));
 
-    await axios.post('http://127.0.0.1:5000/orders', {
+    await axios.post('https://kvdarbsbackend.vercel.app/orders', {
       ...newOrder.value,
       materials: materialsToSend
     }, {
@@ -1527,7 +1527,7 @@ const addOrder = async () => {
 const addMaterial = async () => {
   try {
     const token = localStorage.getItem('authToken');
-    await axios.post('http://127.0.0.1:5000/materials', newMaterial.value, {
+    await axios.post('https://kvdarbsbackend.vercel.app/materials', newMaterial.value, {
       headers: { Authorization: `Bearer ${token}` }
     });
     showAddDialog.value = false;
@@ -1542,7 +1542,7 @@ const addMaterial = async () => {
 const addEmployee = async () => {
   try {
     const token = localStorage.getItem('authToken');
-    const response = await axios.get('http://127.0.0.1:5000/employees', {
+    const response = await axios.get('https://kvdarbsbackend.vercel.app/employees', {
       headers: { Authorization: `Bearer ${token}` }
     });
 
@@ -1561,7 +1561,7 @@ const addEmployee = async () => {
       return;
     }
 
-    await axios.post('http://127.0.0.1:5000/employees', newEmployee.value, {
+    await axios.post('https://kvdarbsbackend.vercel.app/employees', newEmployee.value, {
       headers: { Authorization: `Bearer ${token}` }
     });
     showAddDialog.value = false;
@@ -1583,7 +1583,7 @@ const openEditDialog = async (type, item) => {
   if (type === 'orders') {
     try {
       const token = localStorage.getItem('authToken');
-      const res = await axios.get(`http://127.0.0.1:5000/orders/${item.id}`, {
+      const res = await axios.get(`https://kvdarbsbackend.vercel.app/orders/${item.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -1600,11 +1600,11 @@ const saveEdit = async () => {
     const token = localStorage.getItem('authToken');
     let url;
     if (currentEditType.value === 'orders') {
-      url = `http://127.0.0.1:5000/orders/${editData.value.id}`;
+      url = `https://kvdarbsbackend.vercel.app/orders/${editData.value.id}`;
     } else if (currentEditType.value === 'materials') {
-      url = `http://127.0.0.1:5000/materials/${editData.value.id}`;
+      url = `https://kvdarbsbackend.vercel.app/materials/${editData.value.id}`;
     } else if (currentEditType.value === 'workers') {
-      url = `http://127.0.0.1:5000/employees/${editData.value.id}`;
+      url = `https://kvdarbsbackend.vercel.app/employees/${editData.value.id}`;
     }
 
     let data = { ...editData.value };
@@ -1652,7 +1652,7 @@ const deleteOrder = async (id) => {
   showDeleteToast('Vai tiešām vēlaties dzēst šo pasūtījumu? Šo darbību nevarēs atsaukt.', async () => {
     try {
       const token = localStorage.getItem('authToken');
-      await axios.delete(`http://127.0.0.1:5000/orders/${id}`, {
+      await axios.delete(`https://kvdarbsbackend.vercel.app/orders/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       await fetchOrders();
@@ -1667,7 +1667,7 @@ const deleteMaterial = async (id) => {
   showDeleteToast('Vai tiešām vēlaties dzēst šo materiālu? Šo darbību nevarēs atsaukt.', async () => {
     try {
       const token = localStorage.getItem('authToken');
-      await axios.delete(`http://127.0.0.1:5000/materials/${id}`, {
+      await axios.delete(`https://kvdarbsbackend.vercel.app/materials/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       await fetchMaterials();
@@ -1682,7 +1682,7 @@ const deleteEmployee = async (id) => {
   showDeleteToast('Vai tiešām vēlaties dzēst šo darbinieku? Šo darbību nevarēs atsaukt.', async () => {
     try {
       const token = localStorage.getItem('authToken');
-      await axios.delete(`http://127.0.0.1:5000/employees/${id}`, {
+      await axios.delete(`https://kvdarbsbackend.vercel.app/employees/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       await fetchWorkers();
@@ -1745,7 +1745,7 @@ async function exportToPDF() {
       }
     }
 
-    const response = await axios.get('http://127.0.0.1:5000/api/export_pdf', {
+    const response = await axios.get('https://kvdarbsbackend.vercel.app/api/export_pdf', {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/pdf'
@@ -1933,7 +1933,7 @@ function openTransferDialog(material) {
 async function transferMaterial() {
   try {
     const token = localStorage.getItem('authToken');
-    await axios.post('http://127.0.0.1:5000/materials/transfer', {
+    await axios.post('https://kvdarbsbackend.vercel.app/materials/transfer', {
       material_id: transferData.value.id,
       daudzums: transferData.value.daudzums,
       from_noliktava: transferData.value.noliktava,

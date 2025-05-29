@@ -141,7 +141,7 @@ const fetchOrder = async () => {
 
     if (!token) throw new Error("Nav pieejams autorizācijas tokens. Lūdzu, piesakieties.");
 
-    const response = await fetch(`http://127.0.0.1:5000/orders/${orderId}`, {
+    const response = await fetch(`https://kvdarbsbackend.vercel.app/orders/${orderId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -167,7 +167,7 @@ const acceptOrder = async () => {
   const orderId = route.params.id;
 
   try {
-    const response = await fetch(`http://127.0.0.1:5000/orders/${orderId}/accept`, {
+    const response = await fetch(`https://kvdarbsbackend.vercel.app/orders/${orderId}/accept`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -192,7 +192,7 @@ const finishOrder = async () => {
   const orderId = route.params.id;
 
   try {
-    const response = await fetch(`http://127.0.0.1:5000/orders/${orderId}/finish`, {
+    const response = await fetch(`https://kvdarbsbackend.vercel.app/orders/${orderId}/finish`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,

@@ -32,7 +32,7 @@ const logout = async () => {
   }
 
   try {
-    const response = await fetch('http://127.0.0.1:5000/logout', {
+    const response = await fetch('https://kvdarbsbackend.vercel.app/logout', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,  // Отправляем токен на сервер

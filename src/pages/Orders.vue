@@ -113,7 +113,7 @@ onMounted(async () => {
       return;
     }
 
-    const response = await axios.get("http://127.0.0.1:5000/orders", {
+    const response = await axios.get("https://kvdarbsbackend.vercel.app/orders", {
       headers: { Authorization: `Bearer ${token}` },
     });
 

@@ -139,7 +139,7 @@ const handleLogin = async () => {
   }
 
   try {
-    const response = await axios.post("http://127.0.0.1:5000/login", { kods: kods.value });
+    const response = await axios.post("https://kvdarbsbackend.vercel.app/login", { kods: kods.value });
 
     if (response.data.success) {
       if (response.data.user.amats === "Administrators") {
@@ -173,7 +173,7 @@ const handlePasswordSubmit = async () => {
   isSubmitting.value = true;
 
   try {
-    const response = await axios.post("http://127.0.0.1:5000/login/password", {
+    const response = await axios.post("https://kvdarbsbackend.vercel.app/login/password", {
       kods: kods.value,
       password: password.value,
     });
