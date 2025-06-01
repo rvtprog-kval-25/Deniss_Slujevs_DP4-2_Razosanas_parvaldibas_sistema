@@ -1205,119 +1205,112 @@ def export_pdf_options():
 @token_required
 def export_pdf(current_user):
     try:
-        report_type = request.args.get('type', 'shifts')
-        sort_by = request.args.get('sort_by')
-        sort_order = request.args.get('sort_order', 'asc')
-        search = request.args.get('search', '').lower()
-        
-        if not sort_by:
-            if report_type == 'orders':
-                sort_by = 'nosaukums'
-            elif report_type == 'materials':
-                sort_by = 'nosaukums'
-            elif report_type == 'workers':
-                sort_by = 'vards'
-            elif report_type == 'shifts':
-                sort_by = 'vards'
-            else:
-                sort_by = None
-        
-        data = []
-        try:
-            if report_type == 'orders':
-                # Iegūstam pasūtījumus
-                orders = Order.query.all()
-                data = [{
-                    'nosaukums': order.nosaukums,
-                    'daudzums': order.daudzums,
-                    'status': order.status
-                } for order in orders]
-                
-                # Filtrējam pēc meklēšanas
-                if search:
-                    data = [x for x in data if search in x['nosaukums'].lower()]
-                
-            elif report_type == 'materials':
-                # Iegūstam materiālus
-                materials = Material.query.all()
-                data = [{
-                    'nosaukums': material.nosaukums,
-                    'daudzums': material.daudzums,
-                    'vieniba': material.vieniba,
-                    'noliktava': material.noliktava
-                } for material in materials]
-                
-                # Filtrējam pēc meklēšanas
-                if search:
-                    data = [x for x in data if search in x['nosaukums'].lower()]
-                
-            elif report_type == 'workers':
-                # Iegūstam darbiniekus
-                employees = Employee.query.all()
-                data = [{
-                    'vards': emp.vards,
-                    'uzvards': emp.uzvards,
-                    'amats': emp.amats,
-                    'status': emp.status
-                } for emp in employees]
-                
-                # Filtrējam pēc meklēšanas
-                if search:
-                    data = [x for x in data if search in f"{x['vards']} {x['uzvards']}".lower()]
-                
-            elif report_type == 'shifts':
-                # Iegūstam maiņu datus
-                start = request.args.get('start_date')
-                end = request.args.get('end_date')
-                start_date = parser.parse(start) if start else None
-                end_date = parser.parse(end) if end else None
-                
-                employees = Employee.query.options(joinedload(Employee.shifts)).all()
-                data = []
-                for emp in employees:
-                    total_hours = 0
-                    for shift in emp.shifts:
-                        if not shift.start_time or not shift.end_time:
-                            continue
-                        if start_date and shift.start_time < start_date:
-                            continue
-                        if end_date and shift.end_time > end_date:
-                            continue
-                        duration_hours = (shift.end_time - shift.start_time).total_seconds() / 3600
-                        total_hours += duration_hours
-                    if total_hours > 0:
-                        data.append({
-                            'vards': emp.vards,
-                            'uzvards': emp.uzvards,
-                            'amats': emp.amats,
-                            'hours': round(total_hours, 2)
-                        })
-                
-                # Filtrējam pēc meklēšanas
-                if search:
-                    data = [x for x in data if search in f"{x['vards']} {x['uzvards']}".lower()]
+        report_type = request.args.get('report_type')
+        if not report_type:
+            return jsonify({'error': 'Report type is required'}), 400
+
+        # Get filter parameters
+        filters = {
+            'search_query': request.args.get('search_query', ''),
+            'status': request.args.get('status', ''),
+            'material_search': request.args.get('material_search', ''),
+            'worker_search': request.args.get('worker_search', ''),
+            'start_date': request.args.get('start_date', ''),
+            'end_date': request.args.get('end_date', '')
+        }
+
+        # Get data based on report type
+        data = None
+        if report_type == 'orders':
+            orders = Order.query.all()
+            data = [{
+                'nosaukums': order.nosaukums,
+                'daudzums': order.daudzums,
+                'status': order.status
+            } for order in orders]
             
-            # Kārtojam datus
-            if sort_by and data:
-                reverse = sort_order == 'desc'
-                data.sort(key=lambda x: x.get(sort_by, ''), reverse=reverse)
-                
-        except Exception as e:
-            logging.error(f"Error fetching data: {str(e)}")
-            return jsonify({'error': 'Neizdevās iegūt datus'}), 500
-        
+            # Filter by search and status
+            if filters['search_query']:
+                data = [x for x in data if filters['search_query'].lower() in x['nosaukums'].lower()]
+            if filters['status']:
+                data = [x for x in data if x['status'] == filters['status']]
+
+        elif report_type == 'materials':
+            materials = Material.query.all()
+            data = [{
+                'nosaukums': material.nosaukums,
+                'daudzums': material.daudzums,
+                'vieniba': material.vieniba,
+                'noliktava': material.noliktava
+            } for material in materials]
+            
+            # Filter by search and material search
+            if filters['search_query'] or filters['material_search']:
+                search_term = filters['search_query'] or filters['material_search']
+                data = [x for x in data if search_term.lower() in x['nosaukums'].lower()]
+
+        elif report_type == 'workers':
+            employees = Employee.query.all()
+            data = [{
+                'vards': emp.vards,
+                'uzvards': emp.uzvards,
+                'amats': emp.amats,
+                'status': emp.status
+            } for emp in employees]
+            
+            # Filter by search and worker search
+            if filters['search_query'] or filters['worker_search']:
+                search_term = filters['search_query'] or filters['worker_search']
+                data = [x for x in data if search_term.lower() in f"{x['vards']} {x['uzvards']}".lower()]
+
+        elif report_type == 'shifts':
+            start_date = parser.parse(filters['start_date']) if filters['start_date'] else None
+            end_date = parser.parse(filters['end_date']) if filters['end_date'] else None
+            
+            employees = Employee.query.options(joinedload(Employee.shifts)).all()
+            data = []
+            for emp in employees:
+                total_hours = 0
+                for shift in emp.shifts:
+                    if not shift.start_time or not shift.end_time:
+                        continue
+                    if start_date and shift.start_time < start_date:
+                        continue
+                    if end_date and shift.end_time > end_date:
+                        continue
+                    duration_hours = (shift.end_time - shift.start_time).total_seconds() / 3600
+                    total_hours += duration_hours
+                if total_hours > 0:
+                    data.append({
+                        'vards': emp.vards,
+                        'uzvards': emp.uzvards,
+                        'amats': emp.amats,
+                        'hours': round(total_hours, 2)
+                    })
+            
+            # Filter by search
+            if filters['search_query']:
+                data = [x for x in data if filters['search_query'].lower() in f"{x['vards']} {x['uzvards']}".lower()]
+
+        if data is None:
+            return jsonify({'error': 'Invalid report type'}), 400
+
         try:
-            buffer = create_pdf_content(report_type, data)
+            buffer = create_pdf_content(report_type, data, filters)
         except Exception as e:
             logging.error(f"Error generating PDF: {str(e)}")
             return jsonify({'error': 'Neizdevās ģenerēt PDF'}), 500
-        
+
         return send_file(
             buffer,
             as_attachment=True,
             download_name=f"{report_type}_atskaite.pdf",
             mimetype='application/pdf'
         )
+
+    except Exception as e:
+        logging.error(f"Error in export_pdf: {str(e)}")
+        return jsonify({'error': 'Neizdevās eksportēt PDF'}), 500
         
     except Exception as e:
         logging.error(f"Error in export_pdf: {str(e)}")

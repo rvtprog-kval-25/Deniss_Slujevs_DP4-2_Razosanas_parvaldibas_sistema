@@ -1798,15 +1798,27 @@ async function exportToPDF() {
       return;
     }
 
-    const params = {
-      type: currentTab.value,
-      sort_by: sortKey.value,
-      sort_order: sortAsc.value ? 'asc' : 'desc',
-      search: searchQuery.value
+    // Get current tab and data
+    const reportType = currentTab.value;
+    
+    // Get current filters
+    const filters = {
+      search_query: reportType === 'orders' ? searchQuery.value : 
+                   reportType === 'materials' ? searchMaterials.value : 
+                   reportType === 'workers' ? searchWorkers.value : 
+                   reportType === 'shifts' ? shiftSearchQuery.value : '',
+      status: reportType === 'orders' ? selectedStatus.value : '',
+      material_search: reportType === 'materials' ? materialSearch.value : '',
+      worker_search: reportType === 'workers' ? workerSearch.value : '',
+      start_date: reportType === 'shifts' ? periodStart.value : '',
+      end_date: reportType === 'shifts' ? periodEnd.value : ''
     };
 
     // Send request to backend
     const response = await axios.get('https://kvdarbsbackend.vercel.app/api/export_pdf', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
       params: {
         report_type: reportType,
         ...filters
