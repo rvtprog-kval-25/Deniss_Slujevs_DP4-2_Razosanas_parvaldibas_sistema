@@ -1193,10 +1193,17 @@ const newEmployee = ref({ vards: '', uzvards: '', amats: '', kods: '', status: '
 
 // Computed properties for filtering materials in search
 const filteredMaterialsForSearch = computed(() => {
-  if (!materialSearch.value) return [];
-  return materials.value.filter(mat =>
-    mat.nosaukums.toLowerCase().includes(materialSearch.value.toLowerCase())
-  );
+  try {
+    if (!materialSearch.value) return [];
+    if (!materials.value || !Array.isArray(materials.value)) return [];
+    
+    return materials.value.filter(mat =>
+      mat?.nosaukums?.toLowerCase()?.includes(materialSearch.value.toLowerCase()) || false
+    );
+  } catch (error) {
+    console.error('Error filtering materials:', error);
+    return [];
+  }
 });
 
 const filteredOrders = computed(() => {
@@ -1222,40 +1229,61 @@ const filteredOrders = computed(() => {
 });
 
 const filteredMaterials = computed(() => {
-  if (!materials.value) return [];
-  
-  let result = materials.value.filter(mat =>
-    mat?.nosaukums?.toLowerCase()?.includes(searchMaterials.value.toLowerCase()) || false
-  );
-  
-  if (sortKey.value) {
-    result = sortByKey(result, sortKey.value, sortAsc.value);
+  try {
+    if (!materials.value || !Array.isArray(materials.value)) return [];
+    
+    let result = materials.value.filter(mat =>
+      mat?.nosaukums?.toLowerCase()?.includes(searchMaterials.value.toLowerCase()) || false
+    );
+    
+    if (sortKey.value) {
+      result = sortByKey(result, sortKey.value, sortAsc.value);
+    }
+    
+    return result.slice(0, limitCount.value);
+  } catch (error) {
+    console.error('Error filtering materials:', error);
+    return [];
   }
-  
-  return result.slice(0, limitCount.value);
 });
 
 const filteredEmployees = computed(() => {
-  if (!employees.value) return [];
-  
-  let result = employees.value.filter(emp =>
-    (emp?.vards?.toLowerCase()?.includes(searchWorkers.value.toLowerCase()) || false) ||
-    (emp?.uzvards?.toLowerCase()?.includes(searchWorkers.value.toLowerCase()) || false)
-  );
-  
-  if (sortKey.value) {
-    result = sortByKey(result, sortKey.value, sortAsc.value);
+  try {
+    if (!employees.value || !Array.isArray(employees.value)) return [];
+    
+    let result = employees.value.filter(emp =>
+      (emp?.vards?.toLowerCase()?.includes(searchWorkers.value.toLowerCase()) || false) ||
+      (emp?.uzvards?.toLowerCase()?.includes(searchWorkers.value.toLowerCase()) || false)
+    );
+    
+    if (sortKey.value) {
+      result = sortByKey(result, sortKey.value, sortAsc.value);
+    }
+    
+    return result.slice(0, limitCount.value);
+  } catch (error) {
+    console.error('Error filtering employees:', error);
+    return [];
   }
-  
-  return result.slice(0, limitCount.value);
 });
 
 const filteredMaterialStats = computed(() => {
-  let result = materialStatsRaw.value.filter(stat =>
-    stat.nosaukums.toLowerCase().includes(materialStatsSearchQuery.value.toLowerCase())
-  );
-  if (sortKey.value) result = sortByKey(result, sortKey.value, sortAsc.value);
-  return result.slice(0, limitCount.value);
+  try {
+    if (!materialStatsRaw.value || !Array.isArray(materialStatsRaw.value)) return [];
+    
+    let result = materialStatsRaw.value.filter(stat =>
+      stat?.nosaukums?.toLowerCase()?.includes(materialStatsSearchQuery.value.toLowerCase()) || false
+    );
+    
+    if (sortKey.value) {
+      result = sortByKey(result, sortKey.value, sortAsc.value);
+    }
+    
+    return result.slice(0, limitCount.value);
+  } catch (error) {
+    console.error('Error filtering material stats:', error);
+    return [];
+  }
 });
 
 const totalMaterialUsage = computed(() => {
