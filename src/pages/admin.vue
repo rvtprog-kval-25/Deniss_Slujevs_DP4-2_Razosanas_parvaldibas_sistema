@@ -1805,44 +1805,34 @@ async function exportToPDF() {
       search: searchQuery.value
     };
 
-    // Pievienojam specifiskos filtrus katram tabam
-    if (currentTab.value === 'shifts') {
-      if (periodStart.value && periodEnd.value) {
-        params.start_date = periodStart.value;
-        params.end_date = periodEnd.value;
-      }
-      params.sort_by = shiftSortKey.value;
-      params.sort_order = shiftSortAsc.value ? 'asc' : 'desc';
-      params.search = shiftSearchQuery.value;
-    } else if (currentTab.value === 'materials') {
-      params.search = searchMaterials.value;
-    } else if (currentTab.value === 'workers') {
-      params.search = searchWorkers.value;
-    }
-
+    // Send request to backend
     const response = await axios.get('https://kvdarbsbackend.vercel.app/api/export_pdf', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/pdf'
+      params: {
+        report_type: reportType,
+        ...filters
       },
-      params: params,
       responseType: 'blob'
     });
 
+    // Create blob and download
     const blob = new Blob([response.data], { type: 'application/pdf' });
     const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${currentTab.value}_atskaite.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${reportType}_atskaite.pdf`;
+    document.body.appendChild(a);
+    a.click();
     window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    showActionToast('PDF eksportēts veiksmīgi!', 'success');
   } catch (error) {
-    handleError(error, 'Neizdevās eksportēt PDF. Lūdzu, mēģiniet vēlreiz.');
+    handleError(error, 'Neizdevās eksportēt PDF');
+  } finally {
+    isPdfLibsLoading.value = false;
   }
 }
-// Add these computed properties to help with form visibility
+
 const showOrderForm = computed(() => showAddDialog.value && currentTab.value === 'orders');
 const showMaterialForm = computed(() => showAddDialog.value && currentTab.value === 'materials');
 const showWorkerForm = computed(() => showAddDialog.value && currentTab.value === 'workers');

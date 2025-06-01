@@ -1021,7 +1021,7 @@ def download_font(url, save_path):
     else:
         raise Exception(f"Failed to download font: {response.status_code}")
 
-def create_pdf_content(report_type, data):
+def create_pdf_content(report_type, data, filters=None):
     buffer = BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -1050,6 +1050,13 @@ def create_pdf_content(report_type, data):
         leading=18,
         spaceAfter=30
     ))
+    styles.add(ParagraphStyle(
+        name='LatvianFilter',
+        fontName='DejaVuSans',
+        fontSize=11,
+        leading=13,
+        textColor=colors.gray
+    ))
     
     content = []
     
@@ -1062,8 +1069,30 @@ def create_pdf_content(report_type, data):
     }
     
     content.append(Paragraph(titles.get(report_type, 'Atskaite'), styles['LatvianTitle']))
-    content.append(Spacer(1, 20))
     
+    # Add filters if they exist
+    if filters and any(filters.values()):
+        content.append(Paragraph('<b>Filtri:</b>', styles['LatvianFilter']))
+        filter_text = []
+        if filters.get('search_query'):
+            filter_text.append(f'Sekošana: {filters.get("search_query")}')
+        if filters.get('status') and report_type == 'orders':
+            filter_text.append(f'Statuss: {filters.get("status")}')
+        if filters.get('material_search') and report_type == 'materials':
+            filter_text.append(f'Materiālu meklēšana: {filters.get("material_search")}')
+        if filters.get('worker_search') and report_type == 'workers':
+            filter_text.append(f'Darbinieku meklēšana: {filters.get("worker_search")}')
+        if filters.get('start_date') or filters.get('end_date'):
+            date_range = []
+            if filters.get('start_date'):
+                date_range.append(f'Sākums: {filters.get("start_date")}')
+            if filters.get('end_date'):
+                date_range.append(f'Beigas: {filters.get("end_date")}')
+            filter_text.append(', '.join(date_range))
+        
+        for text in filter_text:
+            content.append(Paragraph(text, styles['LatvianFilter']))
+        content.append(Spacer(1, 20))
     
     if report_type == 'orders':
         if data:
@@ -1142,7 +1171,7 @@ def create_pdf_content(report_type, data):
             for shift in data:
                 table_data.append([
                     shift.get('vards', ''),
-                    shift.get('uzvards', ''),
+                    shift.get('uzvārds', ''),
                     shift.get('amats', ''),
                     str(shift.get('hours', ''))
                 ])
