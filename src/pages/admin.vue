@@ -1179,7 +1179,7 @@ const materialStatsRaw = ref([]);
 const currentEditType = ref('');
 
 // Data
-const orders = ref([]);
+const orders = ref([]); // Initialize with empty array to prevent undefined errors
 const materials = ref([]);
 const employees = ref([]);
 const shiftStats = ref([]);
@@ -1200,17 +1200,25 @@ const filteredMaterialsForSearch = computed(() => {
 });
 
 const filteredOrders = computed(() => {
-  if (!orders.value) return [];
-  
-  let result = orders.value.filter(order =>
-    order?.nosaukums?.toLowerCase()?.includes(searchQuery.value.toLowerCase()) || false
-  );
-  
-  if (sortKey.value) {
-    result = sortByKey(result, sortKey.value, sortAsc.value);
+  try {
+    if (!orders.value || !Array.isArray(orders.value)) return [];
+    
+    const search = searchQuery.value.toLowerCase();
+    if (!search) return orders.value.slice(0, limitCount.value);
+    
+    let result = orders.value.filter(order =>
+      order?.nosaukums?.toLowerCase()?.includes(search) || false
+    );
+    
+    if (sortKey.value) {
+      result = sortByKey(result, sortKey.value, sortAsc.value);
+    }
+    
+    return result.slice(0, limitCount.value);
+  } catch (error) {
+    console.error('Error filtering orders:', error);
+    return [];
   }
-  
-  return result.slice(0, limitCount.value);
 });
 
 const filteredMaterials = computed(() => {
@@ -1451,9 +1459,12 @@ const fetchOrders = async () => {
     const response = await axios.get('https://kvdarbsbackend.vercel.app/orders', {
       headers: { Authorization: `Bearer ${token}` }
     });
-    orders.value = response.data;
+    // Ensure we always have an array
+    orders.value = Array.isArray(response.data) ? response.data : [];
   } catch (error) {
     handleError(error, 'Neizdevās ielādēt pasūtījumus. Lūdzu, mēģiniet vēlreiz.');
+    // Set to empty array on error
+    orders.value = [];
   }
 };
 

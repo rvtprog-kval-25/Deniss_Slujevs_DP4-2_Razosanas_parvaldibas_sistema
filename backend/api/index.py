@@ -406,7 +406,7 @@ def get_orders(current_user):
                         'vieta': material.vieta,
                         'vieniba': material.vieniba,
                         'daudzums': material.daudzums,
-                        'quantity': order_material.quantity
+                        'quantity': order_material.daudzums
                     })
 
             orders_list.append({
