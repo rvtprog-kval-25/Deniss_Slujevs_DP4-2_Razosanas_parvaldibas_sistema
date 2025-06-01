@@ -1498,7 +1498,31 @@ const fetchMaterialStats = async () => {
   }
 };
 
-// Add functions
+// Add this function before addOrder
+const checkMaterialAvailability = (materials) => {
+  const insufficientMaterials = [];
+  
+  for (const mat of materials) {
+    const material = materials.value.find(m => m.id === mat.id);
+    if (!material) {
+      insufficientMaterials.push({ id: mat.id, reason: 'Materiāls nav atrasts' });
+      continue;
+    }
+    
+    const requiredAmount = mat.daudzums * newOrder.value.daudzums;
+    if (material.daudzums < requiredAmount) {
+      insufficientMaterials.push({
+        id: mat.id,
+        name: material.nosaukums,
+        available: material.daudzums,
+        required: requiredAmount
+      });
+    }
+  }
+  
+  return insufficientMaterials;
+};
+
 const addOrder = async () => {
   try {
     const token = localStorage.getItem('authToken');
@@ -1507,20 +1531,60 @@ const addOrder = async () => {
       daudzums: mat.quantity
     }));
 
-    await axios.post('https://kvdarbsbackend.vercel.app/orders', {
+    // Vispirms iegūstam jaunākos materiālu datus
+    await fetchMaterials();
+
+    // Pārbaudam materiālu pieejamību ar jaunākajiem datiem
+    const insufficientMaterials = checkMaterialAvailability(materialsToSend);
+    if (insufficientMaterials.length > 0) {
+      const errorMessage = insufficientMaterials.map(mat => 
+        mat.reason ? mat.reason : 
+        `Materiālam "${mat.name}" nepietiek daudzuma. Pieejams: ${mat.available}, Nepieciešams: ${mat.required}`
+      ).join('\n');
+      showToast(errorMessage, 'error');
+      return;
+    }
+
+    // Izveidojam pasūtījumu ar materiālu versijām
+    const orderResponse = await axios.post('https://kvdarbsbackend.vercel.app/orders', {
       ...newOrder.value,
-      materials: materialsToSend
+      materials: materialsToSend.map(mat => ({
+        ...mat,
+        version: materials.value.find(m => m.id === mat.id).version // Pievienojam materiāla versiju
+      }))
     }, {
       headers: { Authorization: `Bearer ${token}` }
     });
 
+    // Atjauninām materiālu daudzumus
+    for (const mat of materialsToSend) {
+      const material = materials.value.find(m => m.id === mat.id);
+      if (material) {
+        const newQuantity = material.daudzums - (mat.daudzums * newOrder.value.daudzums);
+        await axios.put(`https://kvdarbsbackend.vercel.app/materials/${mat.id}`, {
+          ...material,
+          daudzums: newQuantity,
+          version: material.version // Nosūtam versiju
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
+    }
+
     showAddDialog.value = false;
     await fetchOrders();
+    await fetchMaterials();
     newOrder.value = { nosaukums: '', daudzums: '', status: 'Nav sākts' };
     orderMaterials.value = [];
     showToast('Pasūtījums ir veiksmīgi pievienots sistēmā!', 'success');
   } catch (error) {
-    handleError(error, 'Neizdevās pievienot pasūtījumu. Lūdzu, pārbaudiet ievadītos datus un pārliecinieties, ka visi materiāli ir pieejami.');
+    if (error.response?.status === 409) {
+      // Konflikta gadījumā atjauninām datus un parādam kļūdu
+      await fetchMaterials();
+      showToast('Materiālu daudzums ir mainījies. Lūdzu, pārbaudiet pieejamību un mēģiniet vēlreiz.', 'error');
+    } else {
+      handleError(error, 'Neizdevās pievienot pasūtījumu. Lūdzu, pārbaudiet ievadītos datus un pārliecinieties, ka visi materiāli ir pieejami.');
+    }
   }
 };
 
@@ -1735,14 +1799,25 @@ async function exportToPDF() {
     }
 
     const params = {
-      type: currentTab.value
+      type: currentTab.value,
+      sort_by: sortKey.value,
+      sort_order: sortAsc.value ? 'asc' : 'desc',
+      search: searchQuery.value
     };
 
+    // Pievienojam specifiskos filtrus katram tabam
     if (currentTab.value === 'shifts') {
       if (periodStart.value && periodEnd.value) {
         params.start_date = periodStart.value;
         params.end_date = periodEnd.value;
       }
+      params.sort_by = shiftSortKey.value;
+      params.sort_order = shiftSortAsc.value ? 'asc' : 'desc';
+      params.search = shiftSearchQuery.value;
+    } else if (currentTab.value === 'materials') {
+      params.search = searchMaterials.value;
+    } else if (currentTab.value === 'workers') {
+      params.search = searchWorkers.value;
     }
 
     const response = await axios.get('https://kvdarbsbackend.vercel.app/api/export_pdf', {
@@ -1767,23 +1842,6 @@ async function exportToPDF() {
     handleError(error, 'Neizdevās eksportēt PDF. Lūdzu, mēģiniet vēlreiz.');
   }
 }
-
-// Add new computed properties and methods for form handling
-const updateValue = (event, field) => {
-  const value = event.target.value;
-  if (editDialog.value) {
-    editData.value[field] = value;
-  } else {
-    if (currentTab.value === 'orders') {
-      newOrder.value[field] = value;
-    } else if (currentTab.value === 'materials') {
-      newMaterial.value[field] = value;
-    } else if (currentTab.value === 'workers') {
-      newEmployee.value[field] = value;
-    }
-  }
-};
-
 // Add these computed properties to help with form visibility
 const showOrderForm = computed(() => showAddDialog.value && currentTab.value === 'orders');
 const showMaterialForm = computed(() => showAddDialog.value && currentTab.value === 'materials');
@@ -1817,7 +1875,7 @@ const handleError = (error, defaultMessage) => {
           'error',
           10000,
           () => h('div', [
-            h('div', `Materiāla “${materialName}” pietiek tikai pasūtījuma daudzumam ${maxQty}.`),
+            h('div', `Materiāla "${materialName}" pietiek tikai pasūtījuma daudzumam ${maxQty}.`),
             h('div', { style: 'margin-top: 10px; display: flex; gap: 10px;' }, [
               h('button', {
                 style: 'background:#fff;color:#1f2937;padding:6px 16px;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;transition:background 0.2s;',
@@ -1840,7 +1898,7 @@ const handleError = (error, defaultMessage) => {
           ])
         );
       } else {
-        showToast(`Materiāla “${materialName}” nepietiek nevienam pasūtījumam.`, 'error');
+        showToast(`Materiāla "${materialName}" nepietiek nevienam pasūtījumam.`, 'error');
       }
       return;
     }

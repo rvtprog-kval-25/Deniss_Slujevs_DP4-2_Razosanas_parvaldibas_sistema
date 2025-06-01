@@ -23,10 +23,8 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 
 const logout = async () => {
-  const token = localStorage.getItem('authToken');  // Извлекаем токен из localStorage
-
   if (!token) {
-    console.error("Ошибка: Токен отсутствует в localStorage");
+    console.error("Token is not available");
     router.push('/login');
     return;
   }
@@ -35,7 +33,7 @@ const logout = async () => {
     const response = await fetch('https://kvdarbsbackend.vercel.app/logout', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,  // Отправляем токен на сервер
+        'Authorization': `Bearer ${token}`,  
         'Content-Type': 'application/json'
       }
     });
@@ -43,21 +41,21 @@ const logout = async () => {
     const data = await response.json();
 
     if (response.status === 403) {
-      console.error("Ошибка 403: Токен недействителен", data);
-      localStorage.removeItem('authToken');  // Удаляем токен из localStorage
+      console.error("Error 403: Token is invalid", data);
+      localStorage.removeItem('authToken');  
       router.push('/login');
       return;
     }
 
     if (response.ok && data.success) {
-      console.log("Выход выполнен успешно!");
-      localStorage.removeItem('authToken');  // Удаляем токен из localStorage
-      router.push('/login');  // Перенаправляем на страницу входа
+      console.log("Logout successful!");
+      localStorage.removeItem('authToken');  
+      router.push('/login');  
     } else {
-      console.error("Ошибка выхода:", data.error);
+      console.error("Logout error:", data.error);
     }
   } catch (error) {
-    console.error("Ошибка запроса logout:", error);
+    console.error("Logout request error:", error);
   }
 };
 </script>

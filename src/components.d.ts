@@ -11,6 +11,7 @@ declare module 'vue' {
     AdminLayout: typeof import('./components/admin/AdminLayout.vue')['default']
     AdminNavbar: typeof import('./components/admin/AdminNavbar.vue')['default']
     AdminSidebar: typeof import('./components/admin/AdminSidebar.vue')['default']
+    DashboardStats: typeof import('./components/DashboardStats.vue')['default']
     DetailsDialog: typeof import('./components/admin/dialogs/DetailsDialog.vue')['default']
     EditDialog: typeof import('./components/admin/dialogs/EditDialog.vue')['default']
     MaterialTab: typeof import('./components/admin/tabs/MaterialTab.vue')['default']
@@ -19,6 +20,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     ShiftsTab: typeof import('./components/admin/tabs/ShiftsTab.vue')['default']
+    ShiftStats: typeof import('./components/ShiftStats.vue')['default']
     Toast: typeof import('./components/Toast.vue')['default']
     WorkerTab: typeof import('./components/admin/tabs/WorkerTab.vue')['default']
   }

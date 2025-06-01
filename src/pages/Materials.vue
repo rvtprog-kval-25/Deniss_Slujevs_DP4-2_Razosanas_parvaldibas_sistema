@@ -107,6 +107,4 @@ const goHome = () => {
 };
 </script>
 
-<style scoped>
-/* Подчистка под Tailwind — доп. стили не нужны */
-</style>
+
