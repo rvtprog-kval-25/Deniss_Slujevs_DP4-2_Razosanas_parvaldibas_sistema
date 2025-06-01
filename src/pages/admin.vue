@@ -1200,27 +1200,45 @@ const filteredMaterialsForSearch = computed(() => {
 });
 
 const filteredOrders = computed(() => {
+  if (!orders.value) return [];
+  
   let result = orders.value.filter(order =>
-    order.nosaukums.toLowerCase().includes(searchQuery.value.toLowerCase())
+    order?.nosaukums?.toLowerCase()?.includes(searchQuery.value.toLowerCase()) || false
   );
-  if (sortKey.value) result = sortByKey(result, sortKey.value, sortAsc.value);
+  
+  if (sortKey.value) {
+    result = sortByKey(result, sortKey.value, sortAsc.value);
+  }
+  
   return result.slice(0, limitCount.value);
 });
 
 const filteredMaterials = computed(() => {
+  if (!materials.value) return [];
+  
   let result = materials.value.filter(mat =>
-    mat.nosaukums.toLowerCase().includes(searchMaterials.value.toLowerCase())
+    mat?.nosaukums?.toLowerCase()?.includes(searchMaterials.value.toLowerCase()) || false
   );
-  if (sortKey.value) result = sortByKey(result, sortKey.value, sortAsc.value);
+  
+  if (sortKey.value) {
+    result = sortByKey(result, sortKey.value, sortAsc.value);
+  }
+  
   return result.slice(0, limitCount.value);
 });
 
 const filteredEmployees = computed(() => {
+  if (!employees.value) return [];
+  
   let result = employees.value.filter(emp =>
-    emp.vards.toLowerCase().includes(searchWorkers.value.toLowerCase()) ||
-    emp.uzvards.toLowerCase().includes(searchWorkers.value.toLowerCase())
+    (emp?.vards?.toLowerCase()?.includes(searchWorkers.value.toLowerCase()) || false) ||
+    (emp?.uzvards?.toLowerCase()?.includes(searchWorkers.value.toLowerCase()) || false)
   );
-  if (sortKey.value) result = sortByKey(result, sortKey.value, sortAsc.value);
+  
+  if (sortKey.value) {
+    result = sortByKey(result, sortKey.value, sortAsc.value);
+  }
+  
   return result.slice(0, limitCount.value);
 });
 

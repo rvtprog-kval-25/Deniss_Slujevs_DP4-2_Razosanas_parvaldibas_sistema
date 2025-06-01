@@ -394,7 +394,7 @@ def get_orders(current_user):
         orders_list = []
         
         for order in orders:
-            # Iegūstam materiālus ar versijām
+            # Iegūstam materiālus
             materials = []
             for order_material in order.materials:
                 material = Material.query.get(order_material.material_id)
@@ -406,9 +406,7 @@ def get_orders(current_user):
                         'vieta': material.vieta,
                         'vieniba': material.vieniba,
                         'daudzums': material.daudzums,
-                        'version': material.version,
-                        'quantity': order_material.quantity,
-                        'material_version': order_material.material_version
+                        'quantity': order_material.quantity
                     })
 
             orders_list.append({
@@ -417,8 +415,6 @@ def get_orders(current_user):
                 'daudzums': order.daudzums,
                 'employee_id': order.employee_id,
                 'status': order.status,
-                'created_at': order.created_at.isoformat(),
-                'updated_at': order.updated_at.isoformat(),
                 'materials': materials
             })
 
@@ -437,7 +433,7 @@ def get_order(current_user, order_id):
         if not order:
             return jsonify({'error': 'Pasūtījums nav atrasts'}), 404
 
-        # Iegūstam materiālus ar versijām
+        # Iegūstam materiālus
         materials = []
         for order_material in order.materials:
             material = Material.query.get(order_material.material_id)
@@ -458,8 +454,6 @@ def get_order(current_user, order_id):
             'daudzums': order.daudzums,
             'employee_id': order.employee_id,
             'status': order.status,
-            'created_at': order.created_at.isoformat(),
-            'updated_at': order.updated_at.isoformat(),
             'materials': materials
         }), 200
 
@@ -578,6 +572,11 @@ def add_employee(current_user):
     try:
         data = request.get_json()
 
+        # Pārbaudam, vai jau eksistē darbinieks ar šādu kodu
+        existing_employee = Employee.query.filter_by(kods=data["kods"]).first()
+        if existing_employee:
+            return jsonify({"error": "Darbinieks ar šādu kodu jau eksistē"}), 400
+
         password_hash = None
         if data["amats"].lower() == "administrators":
             raw_password = data.get("password")
@@ -607,6 +606,14 @@ def update_employee(current_user, id):
         employee = Employee.query.get(id)
         if not employee:
             return jsonify({"error": "Darbinieks nav atrasts"}), 404
+
+        # Pārbaudam, vai jau eksistē citšāds darbinieks ar šādu kodu
+        existing_employee = Employee.query.filter(
+            Employee.kods == data["kods"],
+            Employee.kods != employee.kods
+        ).first()
+        if existing_employee:
+            return jsonify({"error": "Darbinieks ar šādu kodu jau eksistē"}), 400
 
         employee.vards = data["vards"]
         employee.uzvards = data["uzvards"]
