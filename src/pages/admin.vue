@@ -1830,18 +1830,31 @@ async function exportToPDF() {
     // Get current tab and data
     const reportType = currentTab.value;
     
-    // Get current filters
-    const filters = {
-      search_query: reportType === 'orders' ? searchQuery.value : 
-                   reportType === 'materials' ? searchMaterials.value : 
-                   reportType === 'workers' ? searchWorkers.value : 
-                   reportType === 'shifts' ? shiftSearchQuery.value : '',
-      status: reportType === 'orders' ? selectedStatus.value : '',
-      material_search: reportType === 'materials' ? materialSearch.value : '',
-      worker_search: reportType === 'workers' ? workerSearch.value : '',
-      start_date: reportType === 'shifts' ? periodStart.value : '',
-      end_date: reportType === 'shifts' ? periodEnd.value : ''
-    };
+    // Get current filters based on tab
+    let searchField;
+    let statusField;
+    let startDateField;
+    let endDateField;
+
+    switch (reportType) {
+      case 'orders':
+        searchField = searchQuery.value;
+        statusField = selectedStatus.value;
+        break;
+      case 'materials':
+        searchField = searchMaterials.value;
+        break;
+      case 'workers':
+        searchField = searchWorkers.value;
+        break;
+      case 'shifts':
+        searchField = shiftSearchQuery.value;
+        startDateField = periodStart.value;
+        endDateField = periodEnd.value;
+        break;
+      default:
+        searchField = '';
+    }
 
     // Send request to backend
     const response = await axios.get('https://kvdarbsbackend.vercel.app/api/export_pdf', {
@@ -1850,9 +1863,16 @@ async function exportToPDF() {
       },
       params: {
         report_type: reportType,
-        ...filters
+        search_query: searchField,
+        status: statusField,
+        start_date: startDateField,
+        end_date: endDateField
       },
       responseType: 'blob'
+    }).catch(error => {
+      console.error('PDF export error:', error.response?.data?.error || error.message);
+      showToast(error.response?.data?.error || 'Neizdevās eksportēt PDF. Lūdzu, mēģiniet vēlreiz.', 'error');
+      throw error;
     });
 
     // Create blob and download
