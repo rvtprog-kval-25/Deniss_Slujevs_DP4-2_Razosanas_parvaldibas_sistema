@@ -1109,40 +1109,77 @@
 <script setup>
 import axios from 'axios';
 import { ref, computed, onMounted, watch, h } from 'vue';
-import { showToast } from '../toast';
+import { useToast } from 'vue-toastification';
 
-// PDF libraries
-const isPdfLibsLoading = ref(false);
+const toast = useToast();
+
+// Initialize all data references with empty arrays
+const orders = ref([]);
+const materials = ref([]);
+const employees = ref([]);
+const shiftStats = ref([]);
+const materialStatsRaw = ref([]);
+const orderMaterials = ref([]);
+
+// Initialize form data
+const newOrder = ref({ nosaukums: '', daudzums: '', status: 'Nav sākts', materials: [] });
+const newMaterial = ref({ nosaukums: '', daudzums: '', vieniba: '', noliktava: '', vieta: '' });
+const newEmployee = ref({ vards: '', uzvards: '', amats: '', kods: '', status: 'Aktīvs' });
+
+// Initialize search and filter states
+const currentTab = ref('orders');
+const searchQuery = ref('');
+const searchMaterials = ref('');
+const searchWorkers = ref('');
+const shiftSearchQuery = ref('');
+const materialStatsSearchQuery = ref('');
+const materialSearch = ref('');
+
+// Initialize dialog states
+const showDetailsDialog = ref(false);
+const detailsData = ref({});
+const showAddDialog = ref(false);
+const editDialog = ref(false);
+const editData = ref({});
+const currentEditType = ref('');
+const showTransferDialog = ref(false);
+const transferData = ref({
+  id: null,
+  nosaukums: '',
+  noliktava: '',
+  vieta: '',
+  daudzums: ''
+});
+
+// Initialize sorting states
+const sortKey = ref('');
+const sortAsc = ref(true);
+const limitCount = ref(50);
+const shiftSortKey = ref('');
+const shiftSortAsc = ref(true);
+
+// PDF libraries loading state
 const isPdfLibsReady = ref(false);
+const isPdfLibsLoading = ref(false);
 
 const initPdfLibs = async () => {
   try {
     isPdfLibsLoading.value = true;
-    const [jspdfModule, autotableModule] = await Promise.all([
+    await Promise.all([
       import('jspdf'),
       import('jspdf-autotable')
     ]);
-    window.jsPDF = jspdfModule.default;
-    window.autoTable = autotableModule.default;
     isPdfLibsReady.value = true;
   } catch (error) {
-    console.error('PDF ielādes kļūda:', error);
-    showToast('Neizdevās ielādēt PDF funkcionalitāti!', 'error');
+    console.error('Error loading PDF libraries:', error);
+    isPdfLibsReady.value = false;
   } finally {
     isPdfLibsLoading.value = false;
   }
 };
 
-// Sorting and filtering
-const sortKey = ref('');
-const sortAsc = ref(true);
-const limitCount = ref(50);
-
-// Separate sorting variables for shifts
-const shiftSortKey = ref('');
-const shiftSortAsc = ref(true);
-
 const sortByKey = (arr, key, ascending = true) => {
+  if (!Array.isArray(arr)) return [];
   return [...arr].sort((a, b) => {
     let valA = a[key];
     let valB = b[key];
@@ -1159,20 +1196,12 @@ const sortByKey = (arr, key, ascending = true) => {
   });
 };
 
-// Tabs
-const currentTab = ref('orders');
-const searchQuery = ref('');
-const searchMaterials = ref('');
-const searchWorkers = ref('');
-const shiftSearchQuery = ref('');
-const materialStatsSearchQuery = ref('');
-const materialSearch = ref('');
-
 // Dialogs
 const showDetailsDialog = ref(false);
 const detailsData = ref({});
 const orderMaterials = ref([]);
 const showAddDialog = ref(false);
+{{ ... }}
 const editDialog = ref(false);
 const editData = ref({});
 const materialStatsRaw = ref([]);

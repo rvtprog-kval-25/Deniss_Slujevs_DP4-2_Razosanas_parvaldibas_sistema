@@ -99,7 +99,7 @@ export default defineComponent({
 
       try {
         const token = localStorage.getItem("authToken");
-        const response = await fetch("http://localhost:5000/api/shifts/start", {
+        const response = await fetch("https://kvdarbsbackend.vercel.app/api/shifts/start", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -135,7 +135,7 @@ export default defineComponent({
 
       try {
         const token = localStorage.getItem("authToken");
-        const response = await fetch(`http://localhost:5000/api/shifts/end/${shiftId.value}`, {
+        const response = await fetch(`https://kvdarbsbackend.vercel.app/api/shifts/end/${shiftId.value}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
