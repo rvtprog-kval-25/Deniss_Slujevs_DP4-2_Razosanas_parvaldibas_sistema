@@ -96,7 +96,6 @@ class Material(db.Model):
     vieta = db.Column(db.String(20))
     vieniba = db.Column(db.String(20))
     daudzums = db.Column(db.Float)
-    version = db.Column(db.Integer, default=1)
 
     order_links = db.relationship(
     "OrderMaterial",
@@ -358,8 +357,7 @@ def get_materials(current_user):
             'noliktava': material.noliktava,
             'vieta': material.vieta,
             'vieniba': material.vieniba,
-            'daudzums': material.daudzums,
-            'version': material.version
+            'daudzums': material.daudzums
         } for material in materials]), 200
     except Exception as e:
         logging.error(f"Error getting materials: {str(e)}")
@@ -451,9 +449,7 @@ def get_order(current_user, order_id):
                     'vieta': material.vieta,
                     'vieniba': material.vieniba,
                     'daudzums': material.daudzums,
-                    'version': material.version,
-                    'quantity': order_material.quantity,
-                    'material_version': order_material.material_version
+                    'quantity': order_material.quantity
                 })
 
         return jsonify({
@@ -653,19 +649,13 @@ def update_order(current_user, order_id):
         if not order:
             return jsonify({'error': 'Pasūtījums nav atrasts'}), 404
 
-        # Pārbaudam materiālu pieejamību un versijas
+        # Pārbaudam materiālu pieejamību
         if 'materials' in data:
             materials_data = []
             for material_data in data['materials']:
                 material = Material.query.get(material_data['id'])
                 if not material:
                     return jsonify({'error': f'Materiāls ar ID {material_data["id"]} nav atrasts'}), 404
-                
-                # Pārbaudam versiju
-                if material.version != material_data.get('version'):
-                    return jsonify({
-                        'error': f'Materiāla "{material.nosaukums}" dati ir mainījušies. Lūdzu, atsvaidziniet lapu un mēģiniet vēlreiz.'
-                    }), 409
                 
                 # Pārbaudam daudzumu
                 if material.daudzums < material_data['quantity']:
@@ -683,7 +673,6 @@ def update_order(current_user, order_id):
             for order_material in order.materials:
                 material = Material.query.get(order_material.material_id)
                 material.daudzums += order_material.quantity
-                material.version += 1
 
             # Izdzēšam vecos materiālus
             OrderMaterial.query.filter_by(order_id=order.id).delete()
@@ -693,14 +682,12 @@ def update_order(current_user, order_id):
                 order_material = OrderMaterial(
                     order_id=order.id,
                     material_id=material_data['material'].id,
-                    quantity=material_data['quantity'],
-                    material_version=material_data['material'].version
+                    quantity=material_data['quantity']
                 )
                 db.session.add(order_material)
                 
-                # Atjauninām materiāla daudzumu un versiju
+                # Atjauninām materiāla daudzumu
                 material_data['material'].daudzums -= material_data['quantity']
-                material_data['material'].version += 1
 
         # Atjauninām pārējos pasūtījuma datus
         if 'nosaukums' in data:
@@ -835,18 +822,12 @@ def create_order(current_user):
             if field not in data:
                 return jsonify({'error': f'Trūkst lauka: {field}'}), 400
 
-        # Pārbaudam materiālu pieejamību un versijas
+        # Pārbaudam materiālu pieejamību
         materials_data = []
         for material_data in data['materials']:
             material = Material.query.get(material_data['id'])
             if not material:
                 return jsonify({'error': f'Materiāls ar ID {material_data["id"]} nav atrasts'}), 404
-            
-            # Pārbaudam versiju
-            if material.version != material_data.get('version'):
-                return jsonify({
-                    'error': f'Materiāla "{material.nosaukums}" dati ir mainījušies. Lūdzu, atsvaidziniet lapu un mēģiniet vēlreiz.'
-                }), 409
             
             # Pārbaudam daudzumu
             if material.daudzums < material_data['quantity']:
@@ -874,14 +855,12 @@ def create_order(current_user):
             order_material = OrderMaterial(
                 order_id=order.id,
                 material_id=material_data['material'].id,
-                quantity=material_data['quantity'],
-                material_version=material_data['material'].version
+                quantity=material_data['quantity']
             )
             db.session.add(order_material)
             
-            # Atjauninām materiāla daudzumu un versiju
+            # Atjauninām materiāla daudzumu
             material_data['material'].daudzums -= material_data['quantity']
-            material_data['material'].version += 1
 
         db.session.commit()
 
