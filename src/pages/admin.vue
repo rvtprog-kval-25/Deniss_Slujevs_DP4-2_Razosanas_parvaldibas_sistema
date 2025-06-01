@@ -496,7 +496,7 @@
                     </div>
                   </td>
                 </tr>
-                <tr v-if="orders.length === 0">
+                <tr v-if="filteredOrders.length === 0">
                   <td colspan="4" class="px-6 py-10 text-center text-sm text-gray-500">
                     <div class="flex flex-col items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300 mb-3">
