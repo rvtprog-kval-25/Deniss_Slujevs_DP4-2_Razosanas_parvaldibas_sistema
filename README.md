@@ -22,17 +22,16 @@ Projektā izmantotas šādas tehnoloģijas:
 
 ## 📚 Izmantotie avoti
 
-1. [Flask dokumentācija](https://flask.palletsprojects.com/) – Pallets Projects (apskatīts 10.02.2025)
-2. [Git dokumentācija](https://git-scm.com/doc) – Software Freedom Conservancy (apskatīts 29.05.2025)
-3. [Katana MRP](https://katanamrp.com/) – Katana Technologies OÜ (apskatīts 15.02.2025)
-4. [MRPeasy](https://www.mrpeasy.com/) – MRPeasy (apskatīts 15.02.2025)
-5. [Odoo Manufacturing](https://www.odoo.com/page/manufacturing) – Odoo S.A. (apskatīts 15.02.2025)
-6. [pgAdmin dokumentācija](https://www.pgadmin.org/docs/) – pgAdmin Dev Team (apskatīts 20.02.2025)
-7. [PostgreSQL dokumentācija](https://www.postgresql.org/docs/) – PostgreSQL G.D.G (apskatīts 20.02.2025)
-8. [SQLAlchemy dokumentācija](https://docs.sqlalchemy.org/) – SQLAlchemy (apskatīts 25.02.2025)
-9. [Tailwind CSS dokumentācija](https://tailwindcss.com/) – Tailwind Labs (apskatīts 23.02.2025)
-10. [Vue.js dokumentācija](https://vuejs.org/) – Vue.js (apskatīts 10.02.2025)
-
+1. https://flask.palletsprojects.com/
+2. https://git-scm.com/doc
+3. https://katanamrp.com/
+4. https://www.mrpeasy.com/
+5. https://www.odoo.com/page/manufacturing
+6. https://www.pgadmin.org/docs/
+7. https://www.postgresql.org/docs/
+8. https://docs.sqlalchemy.org/
+9. https://tailwindcss.com/
+10. https://vuejs.org/
 ---
 
 ## 🚀 Uzstādīšanas instrukcija
