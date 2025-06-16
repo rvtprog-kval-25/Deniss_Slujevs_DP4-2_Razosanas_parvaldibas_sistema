@@ -98,21 +98,21 @@ export default defineComponent({
       }
 
       try {
-        const token = localStorage.getItem("authToken");
-        const response = await fetch("https://kvdarbsbackend.vercel.app/api/shifts/start", {
+        const token = localStorage.getItem("token");
+        const response = await fetch("http://localhost:5000/api/shifts/start", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`,
           },
-          body: JSON.stringify({ started_at: new Date().toISOString() }),
+          body: JSON.stringify({ employee_id: userId }),
         });
 
         if (!response.ok) throw new Error("Neizdevās sākt maiņu.");
 
         const data = await response.json();
-        shiftId.value = data.id;
-        localStorage.setItem(`activeShiftId_${userId}`, data.id);
+        shiftId.value = data.shift_id;
+        localStorage.setItem(`activeShiftId_${userId}`, data.shift_id);
 
         showShiftNotification.value = true;
 
@@ -122,7 +122,7 @@ export default defineComponent({
         }, 3000);
 
       } catch (error) {
-        console.error(error);
+        console.error("Error starting shift:", error);
         alert("Kļūda: nevarēja sākt maiņu.");
       }
     };
@@ -134,14 +134,13 @@ export default defineComponent({
       }
 
       try {
-        const token = localStorage.getItem("authToken");
-        const response = await fetch(`https://kvdarbsbackend.vercel.app/api/shifts/end/${shiftId.value}`, {
+        const token = localStorage.getItem("token");
+        const response = await fetch(`http://localhost:5000/api/shifts/end/${shiftId.value}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`,
           },
-          body: JSON.stringify({ ended_at: new Date().toISOString() }),
         });
 
         if (!response.ok) throw new Error("Neizdevās beigt maiņu.");
@@ -157,7 +156,7 @@ export default defineComponent({
         }, 3000);
 
       } catch (error) {
-        console.error(error);
+        console.error("Error ending shift:", error);
         alert("Kļūda: nevarēja beigt maiņu.");
       }
     };

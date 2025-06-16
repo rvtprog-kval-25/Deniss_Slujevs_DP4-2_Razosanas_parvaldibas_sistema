@@ -75,6 +75,8 @@ const router = useRouter();
 const orders = ref([]);
 const searchQuery = ref("");
 const statusFilter = ref("");
+const error = ref("");
+const loading = ref(true);
 
 const statusOrder = {
   "Pieņemts": 2,
@@ -99,29 +101,34 @@ const filteredOrders = computed(() => {
   });
 });
 
-// Получение токена
-const getToken = () => {
-  return localStorage.getItem("authToken");
-};
-
-// Получение заказов с бэка
-onMounted(async () => {
+const fetchOrders = async () => {
   try {
-    const token = getToken();
+    const token = localStorage.getItem('token');
     if (!token) {
-      console.error("Нет токена. Пожалуйста, авторизуйтесь.");
+      error.value = 'Token not found';
+      loading.value = false;
       return;
     }
 
-    const response = await axios.get("https://kvdarbsbackend.vercel.app/orders", {
-      headers: { Authorization: `Bearer ${token}` },
+    const response = await fetch("http://localhost:5000/orders", {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
     });
-
-    orders.value = response.data;
-  } catch (error) {
-    console.error("Kļūda saņemot pasūtījumus:", error.response ? error.response.data : error.message);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    orders.value = data;
+  } catch (err) {
+    error.value = err.message || 'Error fetching orders';
+  } finally {
+    loading.value = false;
   }
-});
+};
+
+onMounted(fetchOrders);
 
 // Переход к деталям
 const goToDetails = (id) => {

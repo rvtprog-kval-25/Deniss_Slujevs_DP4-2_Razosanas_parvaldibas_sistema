@@ -24,35 +24,45 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.units import cm
 from io import BytesIO
 from werkzeug.security import generate_password_hash
-load_dotenv()
+from flask_migrate import Migrate
+from sqlalchemy import or_
+
+# Load environment variables from .env file in the same directory as this script
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 app = Flask(__name__)
 
+# Configure CORS with strict settings
+CORS(app, 
+     resources={r"/*": {
+         "origins": ["http://localhost:3000"],
+         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+         "allow_headers": ["Content-Type", "Authorization"],
+         "supports_credentials": True,
+         "max_age": 3600
+     }},
+     supports_credentials=True)
 
-from flask_cors import CORS
+# Add error handling for CORS preflight
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = app.make_default_options_response()
+        response.headers["Access-Control-Allow-Origin"] = "http://localhost:3000"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Max-Age"] = "3600"
+        return response
 
-
-app = Flask(__name__)  
-
-CORS(app, resources={r"/*": {
-    "origins": "*",
-    "supports_credentials": True,
-    "allow_headers": ["Content-Type", "Authorization"],
-    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
-    
-}})
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
-
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
-
-SECRET_KEY = "your_secret_key"
-
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 logging.basicConfig(level=logging.DEBUG)
-
-
 
 class Employee(db.Model):
     __tablename__ = 'employees'
@@ -78,15 +88,12 @@ class Employee(db.Model):
             "status": self.status
         }
 
-
-
 class Shift(db.Model):
     __tablename__ = 'shifts'
     id = db.Column(db.Integer, primary_key=True)
     employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'))
     start_time = db.Column(db.DateTime(timezone=True))
     end_time = db.Column(db.DateTime(timezone=True)) 
-
 
 class Material(db.Model):
     __tablename__ = 'materials'
@@ -96,6 +103,7 @@ class Material(db.Model):
     vieta = db.Column(db.String(20))
     vieniba = db.Column(db.String(20))
     daudzums = db.Column(db.Float)
+    reserved_quantity = db.Column(db.Float, default=0)
 
     order_links = db.relationship(
     "OrderMaterial",
@@ -104,7 +112,17 @@ class Material(db.Model):
     passive_deletes=True
 )
 
-
+    def serialize(self):
+        return {
+            "id": self.id,
+            "nosaukums": self.nosaukums,
+            "noliktava": self.noliktava,
+            "vieta": self.vieta,
+            "vieniba": self.vieniba,
+            "daudzums": self.daudzums or 0,
+            "reserved_quantity": self.reserved_quantity or 0,
+            "available_quantity": (self.daudzums or 0) - (self.reserved_quantity or 0)
+        }
 
 class Order(db.Model):
     __tablename__ = 'orders'
@@ -114,36 +132,58 @@ class Order(db.Model):
     employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)
     status = db.Column(db.String(20), default="Nav sākts")      
    
-    materials = db.relationship("OrderMaterial", backref="order",  cascade="all, delete-orphan")
+    materials = db.relationship("OrderMaterial", backref="order", cascade="all, delete-orphan")
 
-def to_dict(self):
+    def to_dict(self):
+        employee_data = None
+        if self.employee:
+            employee_data = self.employee.serialize()
+        
+        materials_in_order = []
+        for om in self.materials:
+            logging.debug(f"Processing OrderMaterial: order_id={om.order_id}, material_id={om.material_id}, raw_daudzums={om.daudzums}")
+            material = db.session.get(Material, om.material_id)
+            if material:
+                materials_in_order.append({
+                    'material_id': material.id,
+                    'nosaukums': material.nosaukums,
+                    'vieniba': material.vieniba, 
+                    'daudzums': om.daudzums or 0
+                })
+            else:
+                logging.warning(f"Material not found for OrderMaterial with material_id: {om.material_id}")
+        
+        logging.debug(f"Final materials_in_order for order {self.id}: {materials_in_order}")
+        
         return {
             'id': self.id,
             'nosaukums': self.nosaukums,
-            'daudzums': self.daudzums,
+            'daudzums': self.daudzums or 0, 
             'status': self.status,
+            'employee_id': self.employee_id,
+            'employee': employee_data,
+            'materials': materials_in_order
         }
-
 
 class OrderMaterial(db.Model):
     __tablename__ = 'order_materials'
-    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), primary_key=True)
-    material_id = db.Column(
-    db.Integer, 
-    db.ForeignKey('materials.id', ondelete='CASCADE'),
-    primary_key=True
-)
-
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id', ondelete='CASCADE'), primary_key=True)
+    material_id = db.Column(db.Integer, db.ForeignKey('materials.id', ondelete='CASCADE'), primary_key=True)
     daudzums = db.Column(db.Float)
+    reserved = db.Column(db.Boolean, default=True)
 
-
-
+    def serialize(self):
+        return {
+            "order_id": self.order_id,
+            "material_id": self.material_id,
+            "daudzums": self.daudzums or 0,
+            "reserved": self.reserved
+        }
 
 def generate_token(user_id):
     expiration = datetime.datetime.utcnow() + datetime.timedelta(hours=1)
     payload = {'user_id': user_id, 'exp': expiration}
     return jwt.encode(payload, SECRET_KEY, algorithm='HS256')
-
 
 def token_required(f):
     @wraps(f)
@@ -155,7 +195,7 @@ def token_required(f):
         token = token[7:]
         try:
             decoded = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-            user = Employee.query.get(decoded['user_id'])
+            user = db.session.get(Employee, decoded['user_id'])
             if not user:
                 return jsonify({"error": "User not found"}), 404
         except jwt.ExpiredSignatureError:
@@ -165,15 +205,6 @@ def token_required(f):
 
         return f(user, *args, **kwargs)
     return decorator
-
-@app.route('/api/shifts/stats', methods=['OPTIONS'])
-def shifts_stats_options():
-    response = jsonify({'message': 'CORS preflight'})
-    response.headers.add('Access-Control-Allow-Origin', 'https://kv-darbs.vercel.app')
-    response.headers.add('Access-Control-Allow-Headers', 'Authorization, Content-Type')
-    response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
-    return response, 200
-
 
 @app.route('/api/shifts/stats', methods=['GET'])
 @token_required
@@ -209,45 +240,46 @@ def get_shifts_stats(current_user):
                 })
 
         response = jsonify(stats)
-        response.headers.add('Access-Control-Allow-Origin', 'https://kv-darbs.vercel.app')
+        response.headers.add('Access-Control-Allow-Origin', request.headers.get('Origin', 'https://kv-darbs.vercel.app'))
+        response.headers.add('Access-Control-Allow-Headers', 'Authorization, Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
         return response, 200
 
     except Exception as e:
         logging.error(f"Stats error: {str(e)}")
         return jsonify({"error": "Stats generation failed"}), 500 
 
-
-
 @app.route("/api/stats/materials", methods=["GET"])
 @token_required
 def get_material_stats(current_user):
     try:
+        # Get all materials with their usage in completed orders
         results = db.session.query(
             Material.id,
             Material.nosaukums,
-            db.func.sum(OrderMaterial.daudzums * Order.daudzums).label("total")
-        ).join(OrderMaterial, Material.id == OrderMaterial.material_id) \
-         .join(Order, Order.id == OrderMaterial.order_id) \
-         .group_by(Material.id, Material.nosaukums) \
+            Material.vieniba,
+            db.func.coalesce(db.func.sum(OrderMaterial.daudzums * Order.daudzums), 0).label("total_used")
+        ).outerjoin(OrderMaterial, Material.id == OrderMaterial.material_id) \
+         .outerjoin(Order, Order.id == OrderMaterial.order_id) \
+         .filter(or_(Order.status == "Pabeigts", Order.status == None)) \
+         .group_by(Material.id, Material.nosaukums, Material.vieniba) \
          .all()
 
         data = [
             {
                 "id": material_id,
                 "nosaukums": nosaukums,
-                "totalUsed": float(total) if total is not None else 0
+                "vieniba": vieniba,
+                "totalUsed": float(total_used) if total_used is not None else 0
             }
-            for material_id, nosaukums, total in results
+            for material_id, nosaukums, vieniba, total_used in results
         ]
 
         return jsonify(data), 200
 
     except Exception as e:
-        logging.error(f"Stats error: {str(e)}")
-        return jsonify({"error": "Neizdevās iegūt statistiku"}), 500
-
-
-
+        logging.error(f"Material stats error: {str(e)}")
+        return jsonify({"error": "Failed to get material statistics"}), 500
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -338,13 +370,13 @@ def login_with_password():
 
     except Exception as e:
         return jsonify({"error": "Server error", "details": str(e)}), 500 
+
 @app.route("/logout", methods=["POST"])
 @token_required
 def logout(current_user):
     current_user.token = None
     db.session.commit()
     return jsonify({"success": True, "message": "Logout successful"}), 200
-
 
 @app.route("/materials", methods=["GET"])
 @token_required
@@ -357,16 +389,19 @@ def get_materials(current_user):
             'noliktava': material.noliktava,
             'vieta': material.vieta,
             'vieniba': material.vieniba,
-            'daudzums': material.daudzums
+            'daudzums': material.daudzums or 0,
+            'reserved_quantity': material.reserved_quantity or 0,
+            'available_quantity': (material.daudzums or 0) - (material.reserved_quantity or 0)
         } for material in materials]), 200
     except Exception as e:
         logging.error(f"Error getting materials: {str(e)}")
-        return jsonify({"error": "Neizdevās iegūt materiālus", "details": str(e)}), 500
+        return jsonify({"error": "Неизвестная ошибка при получении материалов", "details": str(e)}), 500
+
 @app.route("/materials/<int:material_id>", methods=["GET"])
 @token_required
 def get_material(current_user, material_id):
     try:
-        material = Material.query.get(material_id)
+        material = db.session.get(Material, material_id)
         if not material:
             return jsonify({"error": "Materiāls nav atrasts"}), 404
             
@@ -376,15 +411,13 @@ def get_material(current_user, material_id):
             'noliktava': material.noliktava,
             'vieta': material.vieta,
             'vieniba': material.vieniba,
-            'daudzums': material.daudzums,
-            'version': material.version
+            'daudzums': material.daudzums or 0,
+            'reserved_quantity': material.reserved_quantity or 0,
+            'available_quantity': (material.daudzums or 0) - (material.reserved_quantity or 0)
         }), 200
     except Exception as e:
         logging.error(f"Error getting material: {str(e)}")
-        return jsonify({"error": "Neizdevās iegūt materiālu", "details": str(e)}), 500
-
-
-
+        return jsonify({"error": "Неизвестная ошибка при получении материала", "details": str(e)}), 500
 
 @app.route("/orders", methods=["GET"])
 @token_required
@@ -394,178 +427,124 @@ def get_orders(current_user):
         orders_list = []
         
         for order in orders:
-            # Iegūstam materiālus
-            materials = []
-            for order_material in order.materials:
-                material = Material.query.get(order_material.material_id)
-                if material:
-                    materials.append({
-                        'id': material.id,
-                        'nosaukums': material.nosaukums,
-                        'noliktava': material.noliktava,
-                        'vieta': material.vieta,
-                        'vieniba': material.vieniba,
-                        'daudzums': material.daudzums,
-                        'quantity': order_material.daudzums
-                    })
-
-            orders_list.append({
-                'id': order.id,
-                'nosaukums': order.nosaukums,
-                'daudzums': order.daudzums,
-                'employee_id': order.employee_id,
-                'status': order.status,
-                'materials': materials
-            })
+            order_data = order.to_dict()
+            logging.debug(f"Order data from to_dict in get_orders: {order_data}")
+            orders_list.append(order_data)
 
         return jsonify(orders_list), 200
 
     except Exception as e:
         logging.error(f"Error getting orders: {str(e)}")
-        return jsonify({"error": "Neizdevās iegūt pasūtījumus", "details": str(e)}), 500
-
+        return jsonify({"error": "Failed to get orders", "details": str(e)}), 500
 
 @app.route("/orders/<int:order_id>", methods=["GET"])
 @token_required
 def get_order(current_user, order_id):
     try:
-        order = Order.query.get(order_id)
+        order = db.session.get(Order, order_id)
         if not order:
             return jsonify({'error': 'Pasūtījums nav atrasts'}), 404
 
-        # Iegūstam materiālus
-        materials = []
-        for order_material in order.materials:
-            material = Material.query.get(order_material.material_id)
-            if material:
-                materials.append({
-                    'id': material.id,
-                    'nosaukums': material.nosaukums,
-                    'noliktava': material.noliktava,
-                    'vieta': material.vieta,
-                    'vieniba': material.vieniba,
-                    'daudzums': material.daudzums,
-                    'quantity': order_material.quantity
-                })
+        order_data = order.to_dict()
+        logging.debug(f"Order data from to_dict in get_order: {order_data}")
 
-        return jsonify({
-            'id': order.id,
-            'nosaukums': order.nosaukums,
-            'daudzums': order.daudzums,
-            'employee_id': order.employee_id,
-            'status': order.status,
-            'materials': materials
-        }), 200
+        return jsonify(order_data), 200
 
     except Exception as e:
         logging.error(f"Error getting order: {str(e)}")
-        return jsonify({"error": "Neizdevās iegūt pasūtījumu", "details": str(e)}), 500
+        return jsonify({"error": "Неизвестная ошибка при получении заказа", "details": str(e)}), 500
 
-@app.route("/orders/<int:order_id>/accept", methods=["PATCH"])
+@app.route("/api/orders/<int:order_id>/accept", methods=["PATCH"])
 @token_required
 def accept_order(current_user, order_id):
+    logging.info(f"Starting accept_order for order_id: {order_id}")
     try:
-        order = Order.query.get(order_id)
+        order = db.session.get(Order, order_id)
         if not order:
-            return jsonify({'error': 'Pasūtījums nav atrasts'}), 404
+            logging.warning(f"Order with ID {order_id} not found.")
+            return jsonify({"error": "Order not found"}), 404
 
-        if order.status != 'pending':
-            return jsonify({'error': 'Pasūtījums jau ir apstrādāts'}), 400
+        if order.status != "Nav sākts":
+            logging.warning(f"Order {order_id} is not in 'Nav sākts' status. Current status: {order.status}")
+            return jsonify({"error": "Can only accept orders with status 'Nav sākts'"}), 400
 
-        # Pārbaudam materiālu pieejamību un versijas
+        # Get order quantity
+        order_daudzums = float(order.daudzums) if order.daudzums is not None else 0.0
+        logging.info(f"Order daudzums: {order_daudzums}")
+
+        # Deduct materials and remove reservations
         for order_material in order.materials:
-            material = Material.query.get(order_material.material_id)
+            material = db.session.get(Material, order_material.material_id)
             if not material:
-                return jsonify({'error': f'Materiāls ar ID {order_material.material_id} nav atrasts'}), 404
-            
-            # Pārbaudam versiju
-            if material.version != order_material.material_version:
-                return jsonify({
-                    'error': f'Materiāla "{material.nosaukums}" dati ir mainījušies. Lūdzu, atsvaidziniet lapu un mēģiniet vēlreiz.'
-                }), 409
-            
-            # Pārbaudam daudzumu
-            if material.daudzums < order_material.quantity:
-                return jsonify({
-                    'error': f'Nepietiek materiāla "{material.nosaukums}". Pieejams: {material.daudzums} {material.vieniba}'
-                }), 400
+                logging.error(f"Material with id {order_material.material_id} not found during order acceptance.")
+                return jsonify({"error": f"Material with id {order_material.material_id} not found"}), 404
 
-        # Atjauninām materiālu daudzumus un versijas
-        for order_material in order.materials:
-            material = Material.query.get(order_material.material_id)
-            material.daudzums -= order_material.quantity
-            material.version += 1
+            try:
+                material_per_order_unit_daudzums = float(order_material.daudzums)
+            except (TypeError, ValueError):
+                logging.error(f"Invalid daudzums format for material {order_material.material_id} in order acceptance: {order_material.daudzums}")
+                return jsonify({"error": f"Invalid material quantity format for material {order_material.material_id}"}), 400
 
-        # Atjauninām pasūtījuma statusu
-        order.status = 'accepted'
+            # Calculate total quantity to deduct
+            total_material_quantity_for_order = material_per_order_unit_daudzums * order_daudzums
+            
+            # Deduct from available quantity
+            material.daudzums = (material.daudzums or 0) - total_material_quantity_for_order
+            
+            # Remove reservation
+            material.reserved_quantity = (material.reserved_quantity or 0) - total_material_quantity_for_order
+            order_material.reserved = False
+            
+            logging.info(f"Material {material.id}: deducted {total_material_quantity_for_order}, new quantity {material.daudzums}, new reserved {material.reserved_quantity}")
+
+        # Update order status and assign employee
+        order.status = "Pieņemts"
+        order.employee_id = current_user.id
         db.session.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Pasūtījums pieņemts",
-            "order_id": order.id
-        }), 200
+        logging.info(f"Order {order_id} accepted successfully. Returning: {order.to_dict()}")
+        return jsonify(order.to_dict()), 200
 
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error accepting order: {str(e)}")
-        return jsonify({"error": "Neizdevās pieņemt pasūtījumu", "details": str(e)}), 500
+        logging.exception(f"Error accepting order {order_id}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/orders/<int:order_id>/finish", methods=["PATCH"])
 @token_required
 def finish_order(current_user, order_id):
     try:
-        order = Order.query.get(order_id)
+        order = db.session.get(Order, order_id)
         if not order:
-            return jsonify({'error': 'Pasūtījums nav atrasts'}), 404
-
-        if order.status != 'accepted':
-            return jsonify({'error': 'Pasūtījums nav pieņemts'}), 400
-
-        # Pārbaudam materiālu versijas
+            return jsonify({"error": "Order not found"}), 404
+        
+        # Remove any remaining reservations
         for order_material in order.materials:
-            material = Material.query.get(order_material.material_id)
-            if not material:
-                return jsonify({'error': f'Materiāls ar ID {order_material.material_id} nav atrasts'}), 404
-            
-            # Pārbaudam versiju
-            if material.version != order_material.material_version:
-                return jsonify({
-                    'error': f'Materiāla "{material.nosaukums}" dati ir mainījušies. Lūdzu, atsvaidziniet lapu un mēģiniet vēlreiz.'
-                }), 409
-
-        # Atjauninām pasūtījuma statusu
-        order.status = 'finished'
+            material = db.session.get(Material, order_material.material_id)
+            if material:
+                # Calculate total quantity that was reserved
+                total_reserved = float(order_material.daudzums or 0) * float(order.daudzums or 0)
+                # Remove reservation
+                material.reserved_quantity = (material.reserved_quantity or 0) - total_reserved
+                order_material.reserved = False
+        
+        order.status = "Pabeigts"
         db.session.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Pasūtījums pabeigts",
-            "order_id": order.id
-        }), 200
-
+        
+        return jsonify(order.to_dict())
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error finishing order: {str(e)}")
-        return jsonify({"error": "Neizdevās pabeigt pasūtījumu", "details": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/employees", methods=["GET"])
 @token_required
 def get_employees(current_user):
     try:
-        employees = Employee.query.all()
-        employees_list = [{
-            "id": employee.id,
-            "vards": employee.vards,
-            "uzvards": employee.uzvards,
-            "amats": employee.amats,
-            "kods": employee.kods,
-            "status": employee.status
-        } for employee in employees]
-        return jsonify({"success": True, "employees": employees_list}), 200
+        employees = db.session.query(Employee).all()
+        return jsonify([{"id": employee.id,"vards": employee.vards,"uzvards": employee.uzvards,"amats": employee.amats,"kods": employee.kods,"status": employee.status} for employee in employees]), 200
     except Exception as e:
         logging.error(f"Error fetching employees: {str(e)}")
         return jsonify({"error": "Failed to fetch employees", "details": str(e)}), 500
+
 @app.route("/employees", methods=["POST"])
 @token_required
 def add_employee(current_user):
@@ -597,45 +576,44 @@ def add_employee(current_user):
         db.session.commit()
         return jsonify({"success": True, "message": "Darbinieks pievienots"}), 201
     except Exception as e:
-        return jsonify({"error": "Failed to add employee", "details": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/employees/<int:id>", methods=["PUT"])
 @token_required
 def update_employee(current_user, id):
     try:
         data = request.get_json()
-        employee = Employee.query.get(id)
+        employee = db.session.get(Employee, id)
         if not employee:
             return jsonify({"error": "Darbinieks nav atrasts"}), 404
 
-        # Pārbaudam, vai jau eksistē citšāds darbinieks ar šādu kodu
-        existing_employee = Employee.query.filter(
-            Employee.kods == data["kods"],
-            Employee.kods != employee.kods
-        ).first()
-        if existing_employee:
-            return jsonify({"error": "Darbinieks ar šādu kodu jau eksistē"}), 400
+        # Check for duplicate kods
+        if "kods" in data and data["kods"] != employee.kods:
+            existing_employee = Employee.query.filter_by(kods=data["kods"]).first()
+            if existing_employee and existing_employee.id != employee.id:
+                return jsonify({"error": "Darbinieks ar šādu kodu jau eksistē"}), 400
 
-        employee.vards = data["vards"]
-        employee.uzvards = data["uzvards"]
-        employee.amats = data["amats"]
-        employee.kods = data["kods"]
-        employee.status = data["status"]
-        
+        # Update employee data
+        employee.vards = data.get("vards", employee.vards)
+        employee.uzvards = data.get("uzvards", employee.uzvards)
+        employee.amats = data.get("amats", employee.amats)
+        employee.kods = data.get("kods", employee.kods)
+        employee.status = data.get("status", employee.status)
         
         if "password" in data and data["password"]:
-            password_hash = bcrypt.hashpw(data["password"].encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-            employee.password = password_hash
+            employee.password = bcrypt.hashpw(data["password"].encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
         db.session.commit()
-        return jsonify({"success": True, "message": "Darbinieks atjaunināts"}), 200
+        return jsonify({"success": True, "message": "Darbinieks atjaunināts", "employee": employee.serialize()}), 200
     except Exception as e:
-        return jsonify({"error": "Failed to update employee", "details": str(e)}), 500
+        db.session.rollback()
+        return jsonify({"error": "Неизвестная ошибка при обновлении сотрудника", "details": str(e)}), 500
 
 @app.route("/employees/<int:id>", methods=["DELETE"])
 @token_required
 def delete_employee(current_user, id):
     try:
-        employee = Employee.query.get(id)
+        employee = db.session.get(Employee, id)
         if not employee:
             return jsonify({"error": "Darbinieks nav atrasts"}), 404
 
@@ -643,851 +621,594 @@ def delete_employee(current_user, id):
         db.session.commit()
         return jsonify({"success": True, "message": "Darbinieks dzēsts"}), 200
     except Exception as e:
-        return jsonify({"error": "Failed to delete employee", "details": str(e)}), 500
-@app.route("/orders/<int:order_id>", methods=["PUT"])
+        db.session.rollback()
+        return jsonify({"error": "Неизвестная ошибка при удалении сотрудника", "details": str(e)}), 500
+
+@app.route("/api/orders/<int:order_id>", methods=["PUT"])
 @token_required
 def update_order(current_user, order_id):
+    logging.info(f"Starting update_order for order_id: {order_id}")
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'Nav datu'}), 400
-
-        order = Order.query.get(order_id)
+        order = db.session.get(Order, order_id)
         if not order:
-            return jsonify({'error': 'Pasūtījums nav atrasts'}), 404
+            logging.warning(f"Order with ID {order_id} not found.")
+            return jsonify({"error": "Order not found"}), 404
 
-        # Pārbaudam materiālu pieejamību
-        if 'materials' in data:
-            materials_data = []
-            for material_data in data['materials']:
-                material = Material.query.get(material_data['id'])
-                if not material:
-                    return jsonify({'error': f'Materiāls ar ID {material_data["id"]} nav atrasts'}), 404
-                
-                # Pārbaudam daudzumu
-                if material.daudzums < material_data['quantity']:
-                    return jsonify({
-                        'error': f'Nepietiek materiāla "{material.nosaukums}". Pieejams: {material.daudzums} {material.vieniba}'
-                    }), 400
-                
-                materials_data.append({
-                    'material': material,
-                    'quantity': material_data['quantity']
+        data = request.get_json()
+        logging.debug(f"Received data for update_order: {data}")
+        
+        # Validate required fields
+        if not all(key in data for key in ['nosaukums', 'daudzums', 'materials']):
+            logging.error(f"Missing required fields in request data: {data}")
+            return jsonify({"error": "Missing required fields"}), 400
+
+        # Ensure order daudzums is a float
+        try:
+            order_daudzums = float(data['daudzums'])
+        except (TypeError, ValueError):
+            logging.error(f"Invalid daudzums format for order: {data['daudzums']}")
+            return jsonify({"error": "Invalid order quantity format"}), 400
+        logging.info(f"Order daudzums after casting: {order_daudzums}")
+
+        # Store old materials for comparison
+        old_materials = {om.material_id: om for om in order.materials}
+        
+        # First, release all old reservations
+        for order_material in order.materials:
+            material = db.session.get(Material, order_material.material_id)
+            if material:
+                old_reserved = material.reserved_quantity or 0
+                old_total = float(order_material.daudzums or 0) * float(order.daudzums or 0)
+                material.reserved_quantity = old_reserved - old_total
+                logging.info(f"Released old reservation for material {material.id}: {old_total}")
+
+        # Check if new materials are available
+        insufficient_materials = []
+        for material_data in data['materials']:
+            material = db.session.get(Material, material_data['material_id'])
+            if not material:
+                logging.error(f"Material with id {material_data['material_id']} not found during availability check.")
+                return jsonify({"error": f"Material with id {material_data['material_id']} not found"}), 404
+            
+            try:
+                material_per_order_unit_daudzums = float(material_data['daudzums'])
+            except (TypeError, ValueError):
+                logging.error(f"Invalid daudzums format for material {material_data['material_id']}: {material_data['daudzums']}")
+                return jsonify({"error": f"Invalid material quantity format for material {material_data['material_id']}"}), 400
+
+            # Calculate total required quantity for the entire order
+            total_required_quantity = material_per_order_unit_daudzums * order_daudzums
+            available_quantity = (material.daudzums or 0) - (material.reserved_quantity or 0)
+            
+            logging.info(f"Material {material.id}: required {total_required_quantity}, available {available_quantity}")
+            if total_required_quantity > available_quantity:
+                insufficient_materials.append({
+                    "nosaukums": material.nosaukums,
+                    "required": total_required_quantity,
+                    "available": available_quantity,
+                    "unit": material.vieniba
                 })
 
-            # Atjauninām materiālus
-            # Vispirms atgriežam vecos daudzumus
+        if insufficient_materials:
+            # Restore old reservations
             for order_material in order.materials:
-                material = Material.query.get(order_material.material_id)
-                material.daudzums += order_material.quantity
-
-            # Izdzēšam vecos materiālus
-            OrderMaterial.query.filter_by(order_id=order.id).delete()
-
-            # Pievienojam jaunos materiālus
-            for material_data in materials_data:
-                order_material = OrderMaterial(
-                    order_id=order.id,
-                    material_id=material_data['material'].id,
-                    quantity=material_data['quantity']
-                )
-                db.session.add(order_material)
+                material = db.session.get(Material, order_material.material_id)
+                if material:
+                    old_total = float(order_material.daudzums or 0) * float(order.daudzums or 0)
+                    material.reserved_quantity = (material.reserved_quantity or 0) + old_total
+            db.session.rollback()
+            
+            error_message = "Nepietiek materiālu:\n"
+            for mat in insufficient_materials:
+                error_message += f"- {mat['nosaukums']}: Nepieciešams {mat['required']} {mat['unit']}, Pieejams {mat['available']} {mat['unit']}\n"
+            return jsonify({"error": error_message}), 400
                 
-                # Atjauninām materiāla daudzumu
-                material_data['material'].daudzums -= material_data['quantity']
+        # Update order
+        logging.info(f"Updating order {order_id} details: nosaukums={data['nosaukums']}, daudzums={order_daudzums}")
+        order.nosaukums = data['nosaukums']
+        order.daudzums = order_daudzums
 
-        # Atjauninām pārējos pasūtījuma datus
-        if 'nosaukums' in data:
-            order.nosaukums = data['nosaukums']
-        if 'daudzums' in data:
-            order.daudzums = float(data['daudzums'])
-        if 'status' in data:
-            order.status = data['status']
-        if 'employee_id' in data:
-            order.employee_id = data['employee_id']
+        # Clear old materials
+        logging.info(f"Clearing old order materials for order {order_id}.")
+        OrderMaterial.query.filter_by(order_id=order.id).delete()
+
+        # Add new materials and reserve them
+        logging.info(f"Adding new materials and reserving them.")
+        for material_data in data['materials']:
+            material = db.session.get(Material, material_data['material_id'])
+            if not material:
+                logging.error(f"Material with id {material_data['material_id']} not found during order creation.")
+                return jsonify({"error": f"Material with id {material_data['material_id']} not found"}), 404
+            
+            try:
+                material_per_order_unit_daudzums = float(material_data['daudzums'])
+            except (TypeError, ValueError):
+                logging.error(f"Invalid daudzums format for material {material_data['material_id']} in order creation: {material_data['daudzums']}")
+                return jsonify({"error": f"Invalid material quantity format for material {material_data['material_id']}"}), 400
+
+            total_material_quantity_for_order = material_per_order_unit_daudzums * order_daudzums
+            
+            # Create order-material link
+            order_material = OrderMaterial(
+                order_id=order.id,
+                material_id=material.id,
+                daudzums=material_per_order_unit_daudzums,
+                reserved=True
+            )
+            db.session.add(order_material)
+            
+            # Update material reservation
+            material.reserved_quantity = (material.reserved_quantity or 0) + total_material_quantity_for_order
+            logging.info(f"Material {material.id}: new reserved {material.reserved_quantity} after adding new order material.")
 
         db.session.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Pasūtījums atjaunināts",
-            "order_id": order.id
-        }), 200
+        logging.info(f"Order {order_id} updated successfully. Returning: {order.to_dict()}")
+        return jsonify(order.to_dict()), 200
 
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error updating order: {str(e)}")
-        return jsonify({"error": "Neizdevās atjaunināt pasūtījumu", "details": str(e)}), 500
+        logging.exception(f"Error updating order {order_id}") # Log full traceback
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/materials", methods=["POST"])
 @token_required
 def create_material(current_user):
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({'error': 'Nav datu'}), 400
+        
+        if not all(key in data for key in ['nosaukums', 'noliktava', 'vieta', 'vieniba', 'daudzums']):
+            return jsonify({"error": "Missing required fields"}), 400
 
-        required_fields = ['nosaukums', 'noliktava', 'vieta', 'vieniba', 'daudzums']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({'error': f'Trūkst lauka: {field}'}), 400
-
-        if float(data['daudzums']) < 0.01:
-            return jsonify({'error': 'Daudzumam jābūt vismaz 0.01'}), 400
-
+        # Check for duplicate material with same name and warehouse
+        existing_material = Material.query.filter_by(nosaukums=data['nosaukums'], noliktava=data['noliktava']).first()
+        if existing_material:
+            # If duplicate, update quantity
+            existing_material.daudzums = (existing_material.daudzums or 0) + (data['daudzums'] or 0)
+            db.session.commit()
+            return jsonify(existing_material.serialize()), 200
+        
         new_material = Material(
             nosaukums=data['nosaukums'],
             noliktava=data['noliktava'],
             vieta=data['vieta'],
             vieniba=data['vieniba'],
-            daudzums=float(data['daudzums']),
-            version=1  # Inicializējam versiju
+            daudzums=data['daudzums'] or 0
         )
-
         db.session.add(new_material)
         db.session.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Materiāls izveidots",
-            "material": {
-                'id': new_material.id,
-                'nosaukums': new_material.nosaukums,
-                'noliktava': new_material.noliktava,
-                'vieta': new_material.vieta,
-                'vieniba': new_material.vieniba,
-                'daudzums': new_material.daudzums,
-                'version': new_material.version
-            }
-        }), 201
-
+        return jsonify(new_material.serialize()), 201
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error creating material: {str(e)}")
-        return jsonify({"error": "Neizdevās izveidot materiālu", "details": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/materials/<int:material_id>", methods=["PUT"])
 @token_required
 def update_material(current_user, material_id):
     try:
-        data = request.get_json()
-        material = Material.query.get(material_id)
-        
+        material = db.session.get(Material, material_id)
         if not material:
             return jsonify({"error": "Materiāls nav atrasts"}), 404
 
-        # Pārbaudam versiju
-        if 'version' in data and material.version != data['version']:
-            return jsonify({
-                "error": f'Materiāla "{material.nosaukums}" dati ir mainījušies. Lūdzu, atsvaidziniet lapu un mēģiniet vēlreiz.'
-            }), 409
+        data = request.get_json()
+        
+        # If quantity becomes zero or less, delete the material
+        if 'daudzums' in data and (data['daudzums'] or 0) <= 0:
+            db.session.delete(material)
+            db.session.commit()
+            return jsonify({"message": "Material deleted due to zero quantity"}), 200
 
-        # Atjauninām materiāla datus
-        for key, value in data.items():
-            if key != 'version' and hasattr(material, key):
-                setattr(material, key, value)
-        
-        # Palielinām versiju
-        material.version += 1
-        
+        material.nosaukums = data.get('nosaukums', material.nosaukums)
+        material.noliktava = data.get('noliktava', material.noliktava)
+        material.vieta = data.get('vieta', material.vieta)
+        material.vieniba = data.get('vieniba', material.vieniba)
+        material.daudzums = data.get('daudzums', material.daudzums or 0)
+
         db.session.commit()
-        return jsonify({
-            "success": True,
-            "message": "Materiāls atjaunināts",
-            "version": material.version
-        }), 200
-
+        return jsonify(material.serialize()), 200
+        
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error updating material: {str(e)}")
-        return jsonify({"error": "Neizdevās atjaunināt materiālu", "details": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/materials/<int:material_id>", methods=["DELETE"])
 @token_required
 def delete_material(current_user, material_id):
     try:
-        material = Material.query.get(material_id)
+        material = db.session.get(Material, material_id)
         if not material:
             return jsonify({"error": "Materiāls nav atrasts"}), 404
+
+        # Remove any reservations associated with this material from orders
+        orders_with_this_material = Order.query.join(OrderMaterial).filter(OrderMaterial.material_id == material_id).all()
+
+        for order in orders_with_this_material:
+            for order_material in order.materials:
+                if order_material.material_id == material_id and order_material.reserved:
+                    material.reserved_quantity = (material.reserved_quantity or 0) - (order_material.daudzums * order.daudzums)
+        
         db.session.delete(material)
         db.session.commit()
-        return jsonify({"success": True, "message": "Materiāls izdzēsts"}), 200
+        return jsonify({"message": "Material deleted successfully"}), 200
+
     except Exception as e:
-        logging.error(f"Error deleting material: {str(e)}")
-        return jsonify({"error": "Failed to delete material", "details": str(e)}), 500
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/orders", methods=["POST"])
 @token_required
 def create_order(current_user):
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({'error': 'Nav datu'}), 400
+        logging.debug(f"Received data for create_order: {data}") # Added logging
+        
+        # Validate required fields
+        if not all(key in data for key in ['nosaukums', 'daudzums', 'materials']):
+            return jsonify({"error": "Missing required fields"}), 400
 
-        required_fields = ['nosaukums', 'daudzums', 'employee_id', 'materials']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({'error': f'Trūkst lauka: {field}'}), 400
-
-        # Pārbaudam materiālu pieejamību
-        materials_data = []
+        # Check if materials are available
         for material_data in data['materials']:
-            material = Material.query.get(material_data['id'])
+            material = db.session.get(Material, material_data['material_id'])
             if not material:
-                return jsonify({'error': f'Materiāls ar ID {material_data["id"]} nav atrasts'}), 404
+                return jsonify({"error": f"Material with id {material_data['material_id']} not found"}), 404
             
-            # Pārbaudam daudzumu
-            if material.daudzums < material_data['quantity']:
+            required_quantity = (material_data['daudzums'] or 0) * (data['daudzums'] or 0)
+            available_quantity = (material.daudzums or 0) - (material.reserved_quantity or 0);
+            
+            if required_quantity > available_quantity:
                 return jsonify({
-                    'error': f'Nepietiek materiāla "{material.nosaukums}". Pieejams: {material.daudzums} {material.vieniba}'
+                    "error": f"Not enough material {material.nosaukums}. Required: {required_quantity}, Available: {available_quantity}"
                 }), 400
             
-            materials_data.append({
-                'material': material,
-                'quantity': material_data['quantity']
-            })
+        # Create order
+        try:
+            order_daudzums = float(data['daudzums'])
+        except (TypeError, ValueError):
+            logging.error(f"Invalid daudzums format for order: {data['daudzums']}")
+            return jsonify({"error": "Invalid order quantity format"}), 400
 
-        # Izveidojam pasūtījumu
         order = Order(
             nosaukums=data['nosaukums'],
-            daudzums=float(data['daudzums']),
-            employee_id=data['employee_id'],
-            status='pending'
+            daudzums=order_daudzums,
+            status="Nav sākts"
         )
         db.session.add(order)
-        db.session.flush()  # Lai iegūtu order.id
+        db.session.flush()
 
-        # Pievienojam materiālus pasūtījumam
-        for material_data in materials_data:
+        # Add materials and reserve them
+        for material_data in data['materials']:
+            material = db.session.get(Material, material_data['material_id'])
+            if not material:
+                logging.error(f"Material with id {material_data['material_id']} not found during order creation.")
+                return jsonify({"error": f"Material with id {material_data['material_id']} not found"}), 404
+            
+            try:
+                material_per_order_unit_daudzums = float(material_data['daudzums'])
+            except (TypeError, ValueError):
+                logging.error(f"Invalid daudzums format for material {material_data['material_id']} in order creation: {material_data['daudzums']}")
+                return jsonify({"error": f"Invalid material quantity format for material {material_data['material_id']}"}), 400
+
+            total_material_quantity_for_order = material_per_order_unit_daudzums * order_daudzums
+            
+            # Create order-material link
             order_material = OrderMaterial(
                 order_id=order.id,
-                material_id=material_data['material'].id,
-                quantity=material_data['quantity']
+                material_id=material.id,
+                daudzums=material_per_order_unit_daudzums,
+                reserved=True
             )
             db.session.add(order_material)
             
-            # Atjauninām materiāla daudzumu
-            material_data['material'].daudzums -= material_data['quantity']
-
+            # Update material reservation
+            material.reserved_quantity = (material.reserved_quantity or 0) + total_material_quantity_for_order
+        
         db.session.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Pasūtījums izveidots",
-            "order_id": order.id
-        }), 201
+        return jsonify(order.to_dict()), 201
 
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error creating order: {str(e)}")
-        return jsonify({"error": "Neizdevās izveidot pasūtījumu", "details": str(e)}), 500
-
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/orders/<int:order_id>", methods=["DELETE"])
 @token_required
 def delete_order(current_user, order_id):
     try:
-        order = Order.query.get(order_id)
+        order = db.session.get(Order, order_id)
         if not order:
-            return jsonify({'error': 'Pasūtījums nav atrasts'}), 404
+            return jsonify({"error": "Order not found"}), 404
 
-        # Atgriežam materiālu daudzumus
-        for order_material in order.materials:
-            material = Material.query.get(order_material.material_id)
-            if material:
-                material.daudzums += order_material.quantity
-                material.version += 1
-
-        # Izdzēšam pasūtījumu
+        # Remove reservations only if the order is not started
+        if order.status == "Nav sākts":
+            for order_material in order.materials:
+                material = db.session.get(Material, order_material.material_id)
+                if material:
+                    # Calculate total reserved quantity (material quantity * order quantity)
+                    total_reserved = float(order_material.daudzums or 0) * float(order.daudzums or 0)
+                    # Remove reservation
+                    material.reserved_quantity = (material.reserved_quantity or 0) - total_reserved
+                    order_material.reserved = False
+                    logging.debug(f"Delete Order: Removed reservation for material {material.nosaukums} (ID: {material.id}). Removed quantity: {total_reserved}")
+        
+        # Delete order (this will also delete order_materials due to cascade)
         db.session.delete(order)
         db.session.commit()
 
-        return jsonify({
-            "success": True,
-            "message": "Pasūtījums dzēsts"
-        }), 200
+        return jsonify({"message": "Order deleted successfully"}), 200
 
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error deleting order: {str(e)}")
-        return jsonify({"error": "Neizdevās dzēst pasūtījumu", "details": str(e)}), 500
+        logging.error(f"Error deleting order {order_id}: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/shifts/start', methods=['POST'])
 @token_required
 def start_shift(current_user):
     try:
-        
-        active_shift = Shift.query.filter(
-            Shift.employee_id == current_user.id,
-            Shift.end_time.is_(None)  
-        ).first()
+        data = request.get_json()
+        if not data or 'employee_id' not in data:
+            return jsonify({"error": "Missing employee_id"}), 400
 
-        if active_shift:
-            return jsonify({"error": "Jums jau ir aktīva maiņa."}), 400
+        employee = db.session.get(Employee, data['employee_id'])
+        if not employee:
+            return jsonify({"error": "Employee not found"}), 404
 
-        
-        new_shift = Shift(
-            employee_id=current_user.id,
-            start_time=datetime.datetime.utcnow(),  
-            end_time=None  
-        )
-        db.session.add(new_shift)
+        shift = Shift(employee_id=employee.id, start_time=datetime.datetime.now())
+        db.session.add(shift)
         db.session.commit()
-
-        return jsonify({
-            "id": new_shift.id,
-            "message": "Maiņa sākta.",
-            "start_time": new_shift.start_time.isoformat()
-        }), 201
-
+        return jsonify({"message": "Shift started", "shift_id": shift.id}), 201
     except Exception as e:
-        logging.error(f"Kļūda sākot maiņu: {str(e)}")
-        return jsonify({"error": "Servera kļūda"}), 500
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/shifts/end/<int:shift_id>', methods=['PUT'])
 @token_required
 def end_shift(current_user, shift_id):
     try:
-        shift = Shift.query.get(shift_id)
+        shift = db.session.get(Shift, shift_id)
         if not shift:
-            return jsonify({"error": "Maiņa nav atrasta."}), 404
+            return jsonify({"error": "Shift not found"}), 404
 
-        if shift.employee_id != current_user.id:
-            return jsonify({"error": "Nav tiesību pabeigt šo maiņu."}), 403
-
-        if shift.end_time is not None:
-            return jsonify({"error": "Maiņa jau ir pabeigta."}), 400
-
-        
-        shift.end_time = datetime.datetime.utcnow()
+        shift.end_time = datetime.datetime.now()
         db.session.commit()
+        return jsonify({"message": "Shift ended"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/shifts", methods=["GET"])
+@token_required
+def get_shifts(current_user):
+    try:
+        shifts = Shift.query.all()
+        shifts_list = []
+        for shift in shifts:
+            # Calculate status based on start_time and end_time
+            status = "Nav sākts"
+            if shift.start_time:
+                status = "Pabeigts" if shift.end_time else "Aktīva"
+            
+            shift_data = {
+                'id': shift.id,
+                'datums': shift.start_time.isoformat() if shift.start_time else None,
+                'status': status,
+                'start_time': shift.start_time.isoformat() if shift.start_time else None,
+                'end_time': shift.end_time.isoformat() if shift.end_time else None
+            }
+            
+            # Get employee data if exists
+            if shift.employee_id:
+                employee = db.session.get(Employee, shift.employee_id)
+                if employee:
+                    shift_data['employee'] = {
+                        'id': employee.id,
+                        'vards': employee.vards,
+                        'uzvards': employee.uzvards
+                    }
+                else:
+                    shift_data['employee'] = None
+            else:
+                shift_data['employee'] = None
+                
+            shifts_list.append(shift_data)
+            
+        return jsonify(shifts_list), 200
+    except Exception as e:
+        logging.error(f"Error getting shifts: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/stats', methods=['GET'])
+@token_required
+def get_stats(current_user):
+    try:
+        # Basic counts
+        total_materials = Material.query.count()
+        total_workers = Employee.query.count()
+        total_orders = Order.query.count()
+        total_shifts = Shift.query.count()
+        
+        # Calculate total materials quantity
+        total_materials_quantity = db.session.query(db.func.sum(Material.daudzums)).scalar() or 0
 
         return jsonify({
-            "message": "Maiņa pabeigta.",
-            "start_time": shift.start_time.isoformat(),
-            "end_time": shift.end_time.isoformat()
+            "total_materials": total_materials,
+            "total_workers": total_workers,
+            "total_orders": total_orders,
+            "total_shifts": total_shifts,
+            "total_materials_quantity": float(total_materials_quantity)
         }), 200
 
     except Exception as e:
-        logging.error(f"Kļūda beidzot maiņu: {str(e)}")
-        return jsonify({"error": "Servera kļūda"}), 500
+        logging.error(f"Stats error: {str(e)}")
+        return jsonify({"error": "Failed to get statistics"}), 500
 
-@app.route('/materials/search')
-def search_materials():
-    search_term = request.args.get('q', '')
-    materials = Material.query.filter(
-        Material.nosaukums.ilike(f'%{search_term}%')
-    ).limit(10).all()
-    return jsonify([m.to_dict() for m in materials])
-
-@app.route('/orders/<int:order_id>/materials')
-def get_order_materials(order_id):
-    materials = db.session.query(
-        Material.nosaukums,
-        OrderMaterial.quantity,
-        Material.vieniba
-    ).join(OrderMaterial).filter(
-        OrderMaterial.order_id == order_id
-    ).all()
-    
-    result = [{
-        'nosaukums': m.nosaukums,
-        'daudzums': m.quantity,
-        'vieniba': m.vieniba
-    } for m in materials]
-    
-    return jsonify(result)
-  
-
-def download_font(url, save_path):
-    response = requests.get(url)
-    if response.status_code == 200:
-        with open(save_path, 'wb') as f:
-            f.write(response.content)
-    else:
-        raise Exception(f"Failed to download font: {response.status_code}")
-
-def create_pdf_content(report_type, data, filters=None):
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        rightMargin=2*cm,
-        leftMargin=2*cm,
-        topMargin=2*cm,
-        bottomMargin=2*cm
-    )
-
-    
-    font_path = os.path.join(os.path.dirname(__file__), 'fonts', 'DejaVuSans.ttf')
-    pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
-
-    styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(
-        name='Latvian',
-        fontName='DejaVuSans',
-        fontSize=12,
-        leading=14
-    ))
-    styles.add(ParagraphStyle(
-        name='LatvianTitle',
-        fontName='DejaVuSans',
-        fontSize=16,
-        leading=18,
-        spaceAfter=30
-    ))
-    styles.add(ParagraphStyle(
-        name='LatvianFilter',
-        fontName='DejaVuSans',
-        fontSize=11,
-        leading=13,
-        textColor=colors.gray
-    ))
-    
-    content = []
-    
-    
-    titles = {
-        'orders': 'Pasūtījumu Atskaite',
-        'materials': 'Materiālu Atskaite',
-        'workers': 'Darbinieku Atskaite',
-        'shifts': 'Maiņu Atskaite'
-    }
-    
-    content.append(Paragraph(titles.get(report_type, 'Atskaite'), styles['LatvianTitle']))
-    
-    # Add filters if they exist
-    if filters and any(filters.values()):
-        content.append(Paragraph('<b>Filtri:</b>', styles['LatvianFilter']))
-        filter_text = []
-        if filters.get('search_query'):
-            filter_text.append(f'Sekošana: {filters.get("search_query")}')
-        if filters.get('status') and report_type == 'orders':
-            filter_text.append(f'Statuss: {filters.get("status")}')
-        if filters.get('material_search') and report_type == 'materials':
-            filter_text.append(f'Materiālu meklēšana: {filters.get("material_search")}')
-        if filters.get('worker_search') and report_type == 'workers':
-            filter_text.append(f'Darbinieku meklēšana: {filters.get("worker_search")}')
-        if filters.get('start_date') or filters.get('end_date'):
-            date_range = []
-            if filters.get('start_date'):
-                date_range.append(f'Sākums: {filters.get("start_date")}')
-            if filters.get('end_date'):
-                date_range.append(f'Beigas: {filters.get("end_date")}')
-            filter_text.append(', '.join(date_range))
-        
-        for text in filter_text:
-            content.append(Paragraph(text, styles['LatvianFilter']))
-        content.append(Spacer(1, 20))
-    
-    if report_type == 'orders':
-        if data:
-            table_data = [['Nosaukums', 'Daudzums', 'Statuss']]
-            for order in data:
-                table_data.append([
-                    order.get('nosaukums', ''),
-                    str(order.get('daudzums', '')),
-                    order.get('status', '')
-                ])
-            table = Table(table_data, colWidths=[8*cm, 3*cm, 3*cm])
-            table.setStyle(TableStyle([
-                ('FONTNAME', (0, 0), (-1, -1), 'DejaVuSans'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('PADDING', (0, 0), (-1, -1), 6),
-            ]))
-            content.append(table)
-        else:
-            content.append(Paragraph("Nav pasūtījumu datu", styles['Latvian']))
-            
-    elif report_type == 'materials':
-        if data:
-            table_data = [['Nosaukums', 'Daudzums', 'Vienība', 'Noliktava']]
-            for material in data:
-                table_data.append([
-                    material.get('nosaukums', ''),
-                    str(material.get('daudzums', '')),
-                    material.get('vieniba', ''),
-                    material.get('noliktava', '')
-                ])
-            table = Table(table_data, colWidths=[7*cm, 3*cm, 2*cm, 4*cm])
-            table.setStyle(TableStyle([
-                ('FONTNAME', (0, 0), (-1, -1), 'DejaVuSans'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('PADDING', (0, 0), (-1, -1), 6),
-            ]))
-            content.append(table)
-        else:
-            content.append(Paragraph("Nav materiālu datu", styles['Latvian']))
-            
-    elif report_type == 'workers':
-        if data:
-            table_data = [['Vārds', 'Uzvārds', 'Amats', 'Statuss']]
-            for worker in data:
-                table_data.append([
-                    worker.get('vards', ''),
-                    worker.get('uzvards', ''),
-                    worker.get('amats', ''),
-                    worker.get('status', '')
-                ])
-            table = Table(table_data, colWidths=[4*cm, 4*cm, 5*cm, 3*cm])
-            table.setStyle(TableStyle([
-                ('FONTNAME', (0, 0), (-1, -1), 'DejaVuSans'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('PADDING', (0, 0), (-1, -1), 6),
-            ]))
-            content.append(table)
-        else:
-            content.append(Paragraph("Nav darbinieku datu", styles['Latvian']))
-            
-    elif report_type == 'shifts':
-        if data:
-            table_data = [['Vārds', 'Uzvārds', 'Amats', 'Stundas']]
-            for shift in data:
-                table_data.append([
-                    shift.get('vards', ''),
-                    shift.get('uzvārds', ''),
-                    shift.get('amats', ''),
-                    str(shift.get('hours', ''))
-                ])
-            table = Table(table_data, colWidths=[4*cm, 4*cm, 5*cm, 3*cm])
-            table.setStyle(TableStyle([
-                ('FONTNAME', (0, 0), (-1, -1), 'DejaVuSans'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('PADDING', (0, 0), (-1, -1), 6),
-            ]))
-            content.append(table)
-        else:
-            content.append(Paragraph("Nav maiņu datu", styles['Latvian']))
-    
-    doc.build(content)
-    buffer.seek(0)
-    return buffer
-
-@app.route('/api/export_pdf', methods=['OPTIONS'])
-def export_pdf_options():
-    response = jsonify({'message': 'CORS preflight'})
-    response.headers.add('Access-Control-Allow-Origin', 'https://kv-darbs.vercel.app')
-    response.headers.add('Access-Control-Allow-Headers', 'Authorization, Content-Type')
-    response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
-    return response, 200
-
-@app.route('/api/export_pdf', methods=['GET'])
-@token_required
-def export_pdf(current_user):
-    try:
-        report_type = request.args.get('report_type')
-        if not report_type:
-            return jsonify({'error': 'Report type is required'}), 400
-
-        # Get filter parameters
-        filters = {
-            'search_query': request.args.get('search_query', ''),
-            'status': request.args.get('status', ''),
-            'material_search': request.args.get('material_search', ''),
-            'worker_search': request.args.get('worker_search', ''),
-            'start_date': request.args.get('start_date', ''),
-            'end_date': request.args.get('end_date', '')
-        }
-
-        # Get data based on report type
-        data = None
-        if report_type == 'orders':
-            orders = Order.query.all()
-            data = [{
-                'nosaukums': order.nosaukums,
-                'daudzums': order.daudzums,
-                'status': order.status
-            } for order in orders]
-            
-            # Filter by search and status
-            if filters['search_query']:
-                data = [x for x in data if filters['search_query'].lower() in x['nosaukums'].lower()]
-            if filters['status']:
-                data = [x for x in data if x['status'] == filters['status']]
-
-        elif report_type == 'materials':
-            materials = Material.query.all()
-            data = [{
-                'nosaukums': material.nosaukums,
-                'daudzums': material.daudzums,
-                'vieniba': material.vieniba,
-                'noliktava': material.noliktava
-            } for material in materials]
-            
-            # Filter by search and material search
-            if filters['search_query'] or filters['material_search']:
-                search_term = filters['search_query'] or filters['material_search']
-                data = [x for x in data if search_term.lower() in x['nosaukums'].lower()]
-
-        elif report_type == 'workers':
-            employees = Employee.query.all()
-            data = [{
-                'vards': emp.vards,
-                'uzvards': emp.uzvards,
-                'amats': emp.amats,
-                'status': emp.status
-            } for emp in employees]
-            
-            # Filter by search and worker search
-            if filters['search_query'] or filters['worker_search']:
-                search_term = filters['search_query'] or filters['worker_search']
-                data = [x for x in data if search_term.lower() in f"{x['vards']} {x['uzvards']}".lower()]
-
-        elif report_type == 'shifts':
-            start_date = parser.parse(filters['start_date']) if filters['start_date'] else None
-            end_date = parser.parse(filters['end_date']) if filters['end_date'] else None
-            
-            employees = Employee.query.options(joinedload(Employee.shifts)).all()
-            data = []
-            for emp in employees:
-                total_hours = 0
-                for shift in emp.shifts:
-                    if not shift.start_time or not shift.end_time:
-                        continue
-                    if start_date and shift.start_time < start_date:
-                        continue
-                    if end_date and shift.end_time > end_date:
-                        continue
-                    duration_hours = (shift.end_time - shift.start_time).total_seconds() / 3600
-                    total_hours += duration_hours
-                if total_hours > 0:
-                    data.append({
-                        'vards': emp.vards,
-                        'uzvards': emp.uzvards,
-                        'amats': emp.amats,
-                        'hours': round(total_hours, 2)
-                    })
-            
-            # Filter by search
-            if filters['search_query']:
-                data = [x for x in data if filters['search_query'].lower() in f"{x['vards']} {x['uzvards']}".lower()]
-
-        if data is None:
-            return jsonify({'error': 'Invalid report type'}), 400
-
-        try:
-            buffer = create_pdf_content(report_type, data, filters)
-        except Exception as e:
-            logging.error(f"Error generating PDF: {str(e)}")
-            return jsonify({'error': 'Neizdevās ģenerēt PDF'}), 500
-
-        return send_file(
-            buffer,
-            as_attachment=True,
-            download_name=f"{report_type}_atskaite.pdf",
-            mimetype='application/pdf'
-        )
-
-    except Exception as e:
-        logging.error(f"Error in export_pdf: {str(e)}")
-        return jsonify({'error': 'Neizdevās eksportēt PDF'}), 500
-        
-    except Exception as e:
-        logging.error(f"Error in export_pdf: {str(e)}")
-        return jsonify({'error': 'Servera kļūda'}), 500
 @app.route('/materials/transfer', methods=['POST'])
 @token_required
 def transfer_material(current_user):
-    data = request.get_json()
-    material_id = data.get('material_id')
     try:
-        amount_str = str(data.get('daudzums', 0)).replace(',', '.')
-        amount = float(amount_str)
-    except (ValueError, TypeError):
-        return jsonify({'error': 'Daudzumam jābūt skaitlim'}), 400
-    from_noliktava = data.get('from_noliktava')
-    to_noliktava = data.get('to_noliktava')
+        data = request.get_json()
+        print(f"Received transfer data: {data}")  # Debug log
+        
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
 
-    if not material_id or not from_noliktava or not to_noliktava or amount < 0.01:
-        return jsonify({'error': 'Nepieciešamie lauki nav aizpildīti vai daudzums ir pārāk mazs'}), 400
+        material_id = data.get('material_id')
+        to_warehouse = data.get('toNoliktava')  # Changed from to_warehouse to toNoliktava
+        quantity = data.get('daudzums')  # Changed from quantity to daudzums
 
-    
-    material_from = Material.query.filter_by(id=material_id, noliktava=from_noliktava).first()
-    if not material_from or material_from.daudzums < amount:
-        return jsonify({'error': 'Avota noliktavā nav pietiekami daudz materiāla'}), 400
+        print(f"Parsed values - material_id: {material_id}, to_warehouse: {to_warehouse}, quantity: {quantity}")  # Debug log
 
-    
-    material_to = Material.query.filter_by(nosaukums=material_from.nosaukums, noliktava=to_noliktava).first()
-    if material_to:
-        material_to.daudzums += amount
-    else:
-        material_to = Material(
-            nosaukums=material_from.nosaukums,
-            noliktava=to_noliktava,
-            vieta=material_from.vieta,
-            vieniba=material_from.vieniba,
-            daudzums=amount
-        )
-        db.session.add(material_to)
+        if not all([material_id, to_warehouse, quantity is not None]):
+            return jsonify({"error": "Missing required fields"}), 400
 
-    
-    material_from.daudzums -= amount
-    db.session.commit()
+        try:
+            quantity = float(quantity)
+            if quantity <= 0:
+                return jsonify({"error": "Quantity must be greater than 0"}), 400
+        except (TypeError, ValueError):
+            return jsonify({"error": "Invalid quantity value"}), 400
 
-    return jsonify({'success': True, 'message': 'Materiāls pārvietots veiksmīgi'}), 200
+        material = db.session.get(Material, material_id)
+        if not material:
+            return jsonify({"error": "Material not found"}), 404
+
+        print(f"Source material: {material.nosaukums}, current quantity: {material.daudzums}")  # Debug log
+
+        if (material.daudzums or 0) < quantity:
+            return jsonify({"error": "Not enough material in source location"}), 400
+
+        # Deduct from source material
+        material.daudzums = (material.daudzums or 0) - quantity
+
+        # Add to target material (find or create)
+        target_material = Material.query.filter_by(nosaukums=material.nosaukums, noliktava=to_warehouse).first()
+        if target_material:
+            target_material.daudzums = (target_material.daudzums or 0) + quantity
+            print(f"Updated existing target material: {target_material.nosaukums}, new quantity: {target_material.daudzums}")  # Debug log
+        else:
+            new_material = Material(
+                nosaukums=material.nosaukums,
+                noliktava=to_warehouse,
+                vieta=material.vieta,
+                vieniba=material.vieniba,
+                daudzums=quantity
+            )
+            db.session.add(new_material)
+            print(f"Created new target material: {new_material.nosaukums}, quantity: {new_material.daudzums}")  # Debug log
+
+        # If source material quantity becomes zero or less, delete it
+        if (material.daudzums or 0) <= 0:
+            db.session.delete(material)
+            print(f"Deleted source material as quantity reached zero")  # Debug log
+
+        db.session.commit()
+        return jsonify({"message": "Material transferred successfully"}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in transfer_material: {str(e)}")  # Debug logging
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/orders/<int:order_id>/cancel", methods=["PATCH"])
 @token_required
 def cancel_order(current_user, order_id):
     try:
-        order = Order.query.get(order_id)
+        order = db.session.get(Order, order_id)
         if not order:
-            return jsonify({'error': 'Pasūtījums nav atrasts'}), 404
+            return jsonify({"error": "Order not found"}), 404
 
-        if order.status == 'finished':
-            return jsonify({'error': 'Pabeigtu pasūtījumu nevar atcelt'}), 400
+        if order.status == "Pabeigts":
+            return jsonify({"error": "Cannot cancel a finished order"}), 400
 
-        # Pārbaudam materiālu versijas
-        for order_material in order.materials:
-            material = Material.query.get(order_material.material_id)
-            if not material:
-                return jsonify({'error': f'Materiāls ar ID {order_material.material_id} nav atrasts'}), 404
-            
-            # Pārbaudam versiju
-            if material.version != order_material.material_version:
-                return jsonify({
-                    'error': f'Materiāla "{material.nosaukums}" dati ir mainījušies. Lūdzu, atsvaidziniet lapu un mēģiniet vēlreiz.'
-                }), 409
-
-        # Atgriežam materiālu daudzumus
-        for order_material in order.materials:
-            material = Material.query.get(order_material.material_id)
-            if material:
-                material.daudzums += order_material.quantity
-                material.version += 1
-
-        # Atjauninām pasūtījuma statusu
-        order.status = 'cancelled'
+        # Release reserved materials if order was not started or is in progress
+        if order.status == "Nav sākts" or order.status == "Procesā":
+            for order_material in order.materials:
+                material = db.session.get(Material, order_material.material_id)
+                if material:
+                    material.reserved_quantity = (material.reserved_quantity or 0) - ((order_material.daudzums or 0) * (order.daudzums or 0))
+                    order_material.reserved = False # Mark as not reserved
+        
+        order.status = "Atcelts"
         db.session.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Pasūtījums atcelts",
-            "order_id": order.id
-        }), 200
+        
+        return jsonify({"message": "Order cancelled successfully"}), 200
 
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error cancelling order: {str(e)}")
-        return jsonify({"error": "Neizdevās atcelt pasūtījumu", "details": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/materials/<int:material_id>/move", methods=["PATCH"])
 @token_required
 def move_material(current_user, material_id):
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({'error': 'Nav datu'}), 400
+        target_location = data.get('to_location')
+        quantity_to_move = data.get('quantity') or 0
 
-        required_fields = ['noliktava', 'vieta', 'version']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({'error': f'Trūkst lauka: {field}'}), 400
+        if not all([target_location, quantity_to_move is not None]):
+            return jsonify({"error": "Missing required fields"}), 400
 
-        material = Material.query.get(material_id)
-        if not material:
-            return jsonify({'error': 'Materiāls nav atrasts'}), 404
+        source_material = db.session.get(Material, material_id)
+        if not source_material:
+            return jsonify({"error": "Source material not found"}), 404
 
-        # Pārbaudam versiju
-        if material.version != data['version']:
-            return jsonify({
-                'error': f'Materiāla "{material.nosaukums}" dati ir mainījušies. Lūdzu, atsvaidziniet lapu un mēģiniet vēlreiz.'
-            }), 409
+        if (source_material.daudzums or 0) < quantity_to_move:
+            return jsonify({"error": "Not enough material to move"}), 400
 
-        # Atjauninām materiāla atrašanās vietu
-        material.noliktava = data['noliktava']
-        material.vieta = data['vieta']
-        material.version += 1
+        # Deduct from source
+        source_material.daudzums = (source_material.daudzums or 0) - quantity_to_move
+
+        # Find or create in target location
+        target_material = Material.query.filter_by(nosaukums=source_material.nosaukums, noliktava=target_location).first()
+        if target_material:
+            target_material.daudzums = (target_material.daudzums or 0) + quantity_to_move
+        else:
+            new_material = Material(
+                nosaukums=source_material.nosaukums,
+                noliktava=target_location,
+                vieta=source_material.vieta, 
+                vieniba=source_material.vieniba,
+                daudzums=quantity_to_move
+            )
+            db.session.add(new_material)
+        
+        # If source material quantity becomes zero or less, delete it
+        if (source_material.daudzums or 0) <= 0:
+            db.session.delete(source_material)
 
         db.session.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Materiāls pārvietots",
-            "material": {
-                'id': material.id,
-                'nosaukums': material.nosaukums,
-                'noliktava': material.noliktava,
-                'vieta': material.vieta,
-                'vieniba': material.vieniba,
-                'daudzums': material.daudzums,
-                'version': material.version
-            }
-        }), 200
+        return jsonify({"message": "Material moved successfully"}), 200
 
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error moving material: {str(e)}")
-        return jsonify({"error": "Neizdevās pārvietot materiālu", "details": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/materials/<int:material_id>/quantity", methods=["PATCH"])
 @token_required
 def update_material_quantity(current_user, material_id):
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({'error': 'Nav datu'}), 400
+        new_quantity = data.get('quantity')
+        
+        if new_quantity is None:
+            return jsonify({"error": "Quantity not provided"}), 400
 
-        required_fields = ['daudzums', 'version']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({'error': f'Trūkst lauka: {field}'}), 400
-
-        material = Material.query.get(material_id)
+        material = db.session.get(Material, material_id)
         if not material:
-            return jsonify({'error': 'Materiāls nav atrasts'}), 404
+            return jsonify({"error": "Material not found"}), 404
 
-        # Pārbaudam versiju
-        if material.version != data['version']:
-            return jsonify({
-                'error': f'Materiāla "{material.nosaukums}" dati ir mainījušies. Lūdzu, atsvaidziniet lapu un mēģiniet vēlreiz.'
-            }), 409
+        # If new quantity is zero or less, delete the material
+        if (new_quantity or 0) <= 0:
+            db.session.delete(material)
+            db.session.commit()
+            return jsonify({"message": "Material deleted due to zero quantity"}), 200
 
-        # Pārbaudam daudzumu
-        if float(data['daudzums']) < 0.01:
-            return jsonify({'error': 'Daudzumam jābūt vismaz 0.01'}), 400
-
-        # Atjauninām materiāla daudzumu
-        material.daudzums = float(data['daudzums'])
-        material.version += 1
-
+        material.daudzums = new_quantity or 0
         db.session.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Materiāla daudzums atjaunināts",
-            "material": {
-                'id': material.id,
-                'nosaukums': material.nosaukums,
-                'noliktava': material.noliktava,
-                'vieta': material.vieta,
-                'vieniba': material.vieniba,
-                'daudzums': material.daudzums,
-                'version': material.version
-            }
-        }), 200
+        return jsonify({"message": "Material quantity updated successfully"}), 200
 
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error updating material quantity: {str(e)}")
-        return jsonify({"error": "Neizdevās atjaunināt materiāla daudzumu", "details": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)
 

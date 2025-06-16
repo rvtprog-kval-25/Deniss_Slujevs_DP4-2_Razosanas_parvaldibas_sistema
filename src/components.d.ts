@@ -16,11 +16,13 @@ declare module 'vue' {
     EditDialog: typeof import('./components/admin/dialogs/EditDialog.vue')['default']
     MaterialTab: typeof import('./components/admin/tabs/MaterialTab.vue')['default']
     Navbar: typeof import('./components/Navbar.vue')['default']
+    OrderDetailsModal: typeof import('./components/OrderDetailsModal.vue')['default']
     OrdersTab: typeof import('./components/admin/tabs/OrdersTab.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     ShiftsTab: typeof import('./components/admin/tabs/ShiftsTab.vue')['default']
     ShiftStats: typeof import('./components/ShiftStats.vue')['default']
+    SortableTable: typeof import('./components/SortableTable.vue')['default']
     Toast: typeof import('./components/Toast.vue')['default']
     WorkerTab: typeof import('./components/admin/tabs/WorkerTab.vue')['default']
   }

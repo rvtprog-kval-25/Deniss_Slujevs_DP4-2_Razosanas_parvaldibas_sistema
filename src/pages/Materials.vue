@@ -59,30 +59,37 @@ const loading = ref(true);
 const error = ref(null);
 
 const fetchMaterials = async () => {
-  const token = localStorage.getItem('authToken');
-  if (!token) {
-    error.value = 'Autorizācijas tokens nav atrasts.';
-    loading.value = false;
-    return;
-  }
-
   try {
-    const res = await fetch('https://kvdarbsbackend.vercel.app/materials', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Neizdevās ielādēt materiālus');
+    const token = localStorage.getItem('token');
+    if (!token) {
+      error.value = "Nav autorizācijas. Lūdzu, pieteicieties sistēmā.";
+      loading.value = false;
+      return;
     }
 
-    materials.value = data.materials;
+    const res = await fetch('http://localhost:5000/materials', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    
+    if (res.status === 401) {
+      error.value = "Sesija beigusies. Lūdzu, pieteicieties sistēmā vēlreiz.";
+      localStorage.removeItem('token');
+      router.push('/login');
+      return;
+    }
+    
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+    
+    const data = await res.json();
+    materials.value = data;
+    loading.value = false;
   } catch (err) {
-    error.value = err.message;
-  } finally {
+    console.error("Error fetching materials:", err.message);
+    error.value = "Neizdevās ielādēt materiālus. Lūdzu, mēģiniet vēlreiz.";
     loading.value = false;
   }
 };

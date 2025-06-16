@@ -66,40 +66,27 @@ const material = ref({});
 
 const fetchMaterial = async () => {
   try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error("Token not found");
+      return;
+    }
     const materialId = route.params.id; 
     console.log("Fetching material with ID:", materialId);
-
-
-    const token = localStorage.getItem('authToken');
-    
-    if (!token) {
-      throw new Error("Нет токена. Пожалуйста, авторизуйтесь.");
-    }
-
-    const response = await fetch(`https://kvdarbsbackend.vercel.app/materials/${materialId}`, {
-      method: 'GET',
+    const response = await fetch(`http://localhost:5000/materials/${materialId}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
       },
     });
-
     if (!response.ok) {
-      throw new Error("Materiāls nav atrasts");
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-
-    const data = await response.json(); 
+    const data = await response.json();
+    material.value = data;
     console.log("Fetched material data:", data);
-
-    if (!data.nosaukums || !data.noliktava) {
-      throw new Error("Nepilnīgi dati par materiālu");
-    }
-
-    material.value = data; 
   } catch (err) {
     console.error("Error fetching material:", err.message);
-    error.value = err.message;
-    material.value = { nosaukums: "Nav atrasts", description: "Materiāls ar šādu ID nav atrasts." };
+    error.value = err.message || "Error fetching material";
   } finally {
     isLoading.value = false; 
   }

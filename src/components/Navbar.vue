@@ -23,39 +23,28 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 
 const logout = async () => {
-  if (!token) {
-    console.error("Token is not available");
-    router.push('/login');
-    return;
-  }
-
   try {
-    const response = await fetch('https://kvdarbsbackend.vercel.app/logout', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,  
-        'Content-Type': 'application/json'
-      }
-    });
-
-    const data = await response.json();
-
-    if (response.status === 403) {
-      console.error("Error 403: Token is invalid", data);
-      localStorage.removeItem('authToken');  
-      router.push('/login');
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error("Token not found");
       return;
     }
+    const response = await fetch('http://localhost:5000/logout', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
 
-    if (response.ok && data.success) {
-      console.log("Logout successful!");
-      localStorage.removeItem('authToken');  
-      router.push('/login');  
+    if (response.ok) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userRole');
+      router.push('/login');
     } else {
-      console.error("Logout error:", data.error);
+      console.error("Logout failed");
     }
   } catch (error) {
-    console.error("Logout request error:", error);
+    console.error("Error during logout:", error);
   }
 };
 </script>

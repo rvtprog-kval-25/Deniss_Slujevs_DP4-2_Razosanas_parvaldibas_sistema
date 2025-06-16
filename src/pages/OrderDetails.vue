@@ -62,14 +62,14 @@
                 />
               </svg>
               <span class="text-gray-800 font-medium">
-                Materiāls: {{ material.material_name || "Nav norādīts" }}
+                Materiāls: {{ material.nosaukums || "Nav norādīts" }}
                 (
                   {{
-                    material.quantity !== undefined && material.quantity !== 'Nav norādīts' && order.daudzums !== undefined
-                      ? `${Number(material.quantity).toLocaleString('lv-LV', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} x ${Number(order.daudzums).toLocaleString('lv-LV', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    material.daudzums !== undefined && material.daudzums !== 'Nav norādīts' && order.daudzums !== undefined
+                      ? `${Number(material.daudzums).toLocaleString('lv-LV', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} x ${Number(order.daudzums).toLocaleString('lv-LV', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                       : "Nav norādīts"
                   }}
-                  = {{ Number(material.quantity * order.daudzums).toLocaleString('lv-LV', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} vienības
+                  = {{ Number(material.daudzums * order.daudzums).toLocaleString('lv-LV', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} {{ material.vieniba || 'vienības' }}
                 )
               </span>
             </li>
@@ -89,7 +89,7 @@
 
           <!-- Finish Order Button -->
           <button
-            v-if="order.status === 'Pieņemts' && order.employee && order.employee.id === currentUser.id"
+            v-if="order.status === 'Pieņemts'"
             @click="finishOrder"
             class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
           >
@@ -100,9 +100,9 @@
         <!-- Error Message -->
         <div
           v-if="error"
-          class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded"
+          class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded whitespace-pre-line"
+          v-html="error"
         >
-          {{ error }}
         </div>
       </div>
     </div>
@@ -136,26 +136,30 @@ const getToken = () => {
 // Fetch order details
 const fetchOrder = async () => {
   try {
-    const orderId = route.params.id;
-    const token = getToken();
-
-    if (!token) throw new Error("Nav pieejams autorizācijas tokens. Lūdzu, piesakieties.");
-
-    const response = await fetch(`https://kvdarbsbackend.vercel.app/orders/${orderId}`, {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      error.value = "Token not found";
+      isLoading.value = false;
+      return;
+    }
+    const response = await fetch(`http://localhost:5000/orders/${route.params.id}`, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        'Authorization': `Bearer ${token}`,
       },
     });
-
-    if (!response.ok) throw new Error("Pasūtījums nav atrasts");
-
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
     const data = await response.json();
     order.value = data;
 
+    console.log('Order data after fetch:', order.value);
+    console.log('Materials in order after fetch:', order.value.materials);
+
     isAccepted.value = !!data.employee;
   } catch (err) {
+    console.error("Error fetching order:", err.message);
     error.value = err.message || "Error fetching order";
-    order.value = { nosaukums: "Nav atrasts" };
   } finally {
     isLoading.value = false;
   }
@@ -163,49 +167,59 @@ const fetchOrder = async () => {
 
 // Accept order
 const acceptOrder = async () => {
-  const token = getToken();
-  const orderId = route.params.id;
-
   try {
-    const response = await fetch(`https://kvdarbsbackend.vercel.app/orders/${orderId}/accept`, {
-      method: "PATCH",
+    const token = localStorage.getItem('token');
+    if (!token) {
+      error.value = "Token not found";
+      return;
+    }
+
+    const response = await fetch(`http://localhost:5000/api/orders/${route.params.id}/accept`, {
+      method: 'PATCH',
       headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ employee_id: currentUser.id }),
     });
 
-    if (!response.ok) throw new Error("Kļūda pieņemot pasūtījumu");
+    const data = await response.json();
 
-    // Uzreiz atjauno pasūtījuma datus pēc pieņemšanas
+    if (!response.ok) {
+      error.value = data.error || "Error accepting order";
+      return;
+    }
+
+    // Обновляем детали заказа сразу после принятия
     await fetchOrder();
-    isAccepted.value = true;
+    // Принудительно обновляем currentUser.id из localStorage (на случай, если он изменился)
+    currentUser.id = parseInt(localStorage.getItem("userId")) || null;
   } catch (err) {
-    error.value = err.message || "Error accepting order";
+    console.error("Error accepting order:", err);
+    error.value = "Error accepting order. Please try again.";
   }
 };
 
 // Finish order
 const finishOrder = async () => {
-  const token = getToken();
-  const orderId = route.params.id;
-
   try {
-    const response = await fetch(`https://kvdarbsbackend.vercel.app/orders/${orderId}/finish`, {
-      method: "PATCH",
+    const token = localStorage.getItem('token');
+    if (!token) {
+      error.value = "Token not found";
+      return;
+    }
+    const response = await fetch(`http://localhost:5000/orders/${route.params.id}/finish`, {
+      method: 'PATCH',
       headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ status: "Pabeigts" }),
     });
-
-    if (!response.ok) throw new Error("Kļūda pabeidzot pasūtījumu");
-
-    // Uzreiz atjauno pasūtījuma datus pēc pabeigšanas
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
     await fetchOrder();
   } catch (err) {
+    console.error("Error finishing order:", err.message);
     error.value = err.message || "Error finishing order";
   }
 };
